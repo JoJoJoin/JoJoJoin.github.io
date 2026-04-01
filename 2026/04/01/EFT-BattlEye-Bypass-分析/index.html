@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"jojojoin.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"tomorrow-night-bright"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="概述本文分析一个针对 Escape From Tarkov（塔科夫）的 BattlEye 反作弊 Bypass 项目——TarkovLauncherBypass。该项目以 DLL 的形式注入 BSG Launcher（游戏启动器），通过 Hook 进程创建流程，在游戏启动的关键时机完成三件事：  Disabler：拦截游戏启动流程，阻止 BattlEye 加载并 Patch 反作弊校验函数 Spo">
+<meta property="og:type" content="article">
+<meta property="og:title" content="EFT BattlEye Bypass 分析">
+<meta property="og:url" content="https://jojojoin.github.io/2026/04/01/EFT-BattlEye-Bypass-%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="JoJoJoin 的博客">
+<meta property="og:description" content="概述本文分析一个针对 Escape From Tarkov（塔科夫）的 BattlEye 反作弊 Bypass 项目——TarkovLauncherBypass。该项目以 DLL 的形式注入 BSG Launcher（游戏启动器），通过 Hook 进程创建流程，在游戏启动的关键时机完成三件事：  Disabler：拦截游戏启动流程，阻止 BattlEye 加载并 Patch 反作弊校验函数 Spo">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-04-01T15:14:06.000Z">
+<meta property="article:modified_time" content="2026-04-01T15:20:09.853Z">
+<meta property="article:author" content="JoJoJoin">
+<meta property="article:tag" content="BattlEye">
+<meta property="article:tag" content="Unity">
+<meta property="article:tag" content="逆向工程">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://jojojoin.github.io/2026/04/01/EFT-BattlEye-Bypass-%E5%88%86%E6%9E%90/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://jojojoin.github.io/2026/04/01/EFT-BattlEye-Bypass-%E5%88%86%E6%9E%90/","path":"2026/04/01/EFT-BattlEye-Bypass-分析/","title":"EFT BattlEye Bypass 分析"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>EFT BattlEye Bypass 分析 | JoJoJoin 的博客</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">JoJoJoin 的博客</p>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">记录学习与生活</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li>
+  </ul>
+</nav>
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%A1%B9%E7%9B%AE%E7%BB%93%E6%9E%84"><span class="nav-number">2.</span> <span class="nav-text">项目结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B"><span class="nav-number">3.</span> <span class="nav-text">执行流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A8%A1%E5%9D%97%E4%B8%80%EF%BC%9ADisabler-%E2%80%94%E2%80%94-BattlEye-%E7%A6%81%E7%94%A8%E6%A0%B8%E5%BF%83"><span class="nav-number">4.</span> <span class="nav-text">模块一：Disabler —— BattlEye 禁用核心</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-Hook-CreateProcessInternalW"><span class="nav-number">4.1.</span> <span class="nav-text">1. Hook CreateProcessInternalW</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E6%9B%BF%E6%8D%A2%E5%90%AF%E5%8A%A8%E7%9B%AE%E6%A0%87%EF%BC%9A%E7%BB%95%E8%BF%87-BattlEye-%E8%BF%9B%E7%A8%8B"><span class="nav-number">4.2.</span> <span class="nav-text">2. 替换启动目标：绕过 BattlEye 进程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%85%A5%E5%8F%A3%E7%82%B9%E9%99%B7%E9%98%B1%EF%BC%88Entry-Point-Trap%EF%BC%89"><span class="nav-number">4.3.</span> <span class="nav-text">3. 入口点陷阱（Entry Point Trap）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-Patch-UnityPlayer-dll-%E7%9A%84-BE-%E6%9C%8D%E5%8A%A1%E6%A3%80%E6%9F%A5"><span class="nav-number">4.4.</span> <span class="nav-text">4. Patch UnityPlayer.dll 的 BE 服务检查</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-Patch-GameAssembly-dll-%E7%9A%84%E5%8F%8D%E4%BD%9C%E5%BC%8A%E9%AA%8C%E8%AF%81"><span class="nav-number">4.5.</span> <span class="nav-text">5. Patch GameAssembly.dll 的反作弊验证</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-%E6%81%A2%E5%A4%8D%E5%85%A5%E5%8F%A3%E7%82%B9%E5%B9%B6%E5%90%AF%E5%8A%A8%E6%B8%B8%E6%88%8F"><span class="nav-number">4.6.</span> <span class="nav-text">6. 恢复入口点并启动游戏</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A8%A1%E5%9D%97%E4%BA%8C%EF%BC%9ASpoofer-%E2%80%94%E2%80%94-HWID-%E6%AC%BA%E9%AA%97"><span class="nav-number">5.</span> <span class="nav-text">模块二：Spoofer —— HWID 欺骗</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%9B%AE%E7%9A%84"><span class="nav-number">5.1.</span> <span class="nav-text">目的</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Launcher-%E4%BE%A7-Hook"><span class="nav-number">5.2.</span> <span class="nav-text">Launcher 侧 Hook</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-GetSystemFirmwareTable-%E2%80%94%E2%80%94-SMBIOS-%E6%95%B0%E6%8D%AE%E4%BC%AA%E9%80%A0"><span class="nav-number">5.2.1.</span> <span class="nav-text">(1) GetSystemFirmwareTable —— SMBIOS 数据伪造</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-CWbemObject-Get-%E2%80%94%E2%80%94-WMI-%E6%9F%A5%E8%AF%A2%E7%BB%93%E6%9E%9C%E4%BC%AA%E9%80%A0"><span class="nav-number">5.2.2.</span> <span class="nav-text">(2) CWbemObject::Get —— WMI 查询结果伪造</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Game-%E4%BE%A7-Patch"><span class="nav-number">5.3.</span> <span class="nav-text">Game 侧 Patch</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A8%A1%E5%9D%97%E4%B8%89%EF%BC%9AInjector-%E2%80%94%E2%80%94-DLL-%E6%B3%A8%E5%85%A5%E4%B8%8E%E9%9A%90%E8%97%8F"><span class="nav-number">6.</span> <span class="nav-text">模块三：Injector —— DLL 注入与隐藏</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B3%A8%E5%85%A5%E6%96%B9%E5%BC%8F"><span class="nav-number">6.1.</span> <span class="nav-text">注入方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A8%A1%E5%9D%97%E9%9A%90%E8%97%8F"><span class="nav-number">6.2.</span> <span class="nav-text">模块隐藏</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E8%BF%99%E6%A0%B7%E5%B0%B1%E8%83%BD-Bypass-BattlEye%EF%BC%9F"><span class="nav-number">7.</span> <span class="nav-text">为什么这样就能 Bypass BattlEye？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%80%E6%9C%AF%E7%BB%86%E8%8A%82%E6%80%BB%E7%BB%93"><span class="nav-number">8.</span> <span class="nav-text">技术细节总结</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="JoJoJoin"
+      src="https://avatars.githubusercontent.com/u/142400352?v=4">
+  <p class="site-author-name" itemprop="name">JoJoJoin</p>
+  <div class="site-description" itemprop="description">一个关于技术和生活的个人博客</div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://jojojoin.github.io/2026/04/01/EFT-BattlEye-Bypass-%E5%88%86%E6%9E%90/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://avatars.githubusercontent.com/u/142400352?v=4">
+      <meta itemprop="name" content="JoJoJoin">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="JoJoJoin 的博客">
+      <meta itemprop="description" content="一个关于技术和生活的个人博客">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="EFT BattlEye Bypass 分析 | JoJoJoin 的博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          EFT BattlEye Bypass 分析
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-04-01 23:14:06 / 修改时间：23:20:09" itemprop="dateCreated datePublished" datetime="2026-04-01T23:14:06+08:00">2026-04-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">技术</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>本文分析一个针对 Escape From Tarkov（塔科夫）的 BattlEye 反作弊 Bypass 项目——<strong>TarkovLauncherBypass</strong>。该项目以 DLL 的形式注入 BSG Launcher（游戏启动器），通过 Hook 进程创建流程，在游戏启动的关键时机完成三件事：</p>
+<ol>
+<li><strong>Disabler</strong>：拦截游戏启动流程，阻止 BattlEye 加载并 Patch 反作弊校验函数</li>
+<li><strong>Spoofer</strong>：伪造硬件标识（HWID），防止被 BattlEye 的硬件封禁机制追踪</li>
+<li><strong>Injector</strong>：可选地注入额外 DLL（如 Metadata Dumper），并隐藏注入痕迹</li>
+</ol>
+<p>整体架构以 DLL 注入到 <code>BsgLauncher.exe</code> 为起点，利用 Microsoft Detours 库对 Windows API 进行 Inline Hook。</p>
+<h2 id="项目结构"><a href="#项目结构" class="headerlink" title="项目结构"></a>项目结构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">TarkovLauncherBypass/</span><br><span class="line">├── dllmain.cpp          # DLL 入口，编排三个模块的初始化顺序</span><br><span class="line">├── feature/</span><br><span class="line">│   ├── disabler.cpp/h   # 核心：拦截进程创建，禁用 BattlEye</span><br><span class="line">│   ├── injector.cpp/h   # DLL 注入 + 模块隐藏</span><br><span class="line">│   └── spoofer.cpp/h    # HWID 伪造</span><br><span class="line">├── libs/</span><br><span class="line">│   ├── detours.cpp/h    # Microsoft Detours Hook 库</span><br><span class="line">│   └── ntdll.h          # NT 原生 API 定义</span><br><span class="line">└── util/</span><br><span class="line">    ├── globals.h         # 模式匹配工具函数</span><br><span class="line">    └── logger.cpp/h      # 日志输出</span><br></pre></td></tr></table></figure>
+
+<h2 id="执行流程"><a href="#执行流程" class="headerlink" title="执行流程"></a>执行流程</h2><p>DLL 被注入启动器后，<code>DllMain</code> 创建线程执行 <code>init()</code>：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">init</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    spoofer::<span class="built_in">init</span>();       <span class="comment">// 1. 初始化 HWID 欺骗 Hook</span></span><br><span class="line">    injector::<span class="built_in">init</span>();      <span class="comment">// 2. 读取配置，决定是否注入 Dumper</span></span><br><span class="line">    DWORD eft_pid = disabler::<span class="built_in">disable</span>(); <span class="comment">// 3. Hook CreateProcess，等待游戏启动</span></span><br><span class="line">    <span class="keyword">if</span> (eft_pid != <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        spoofer::<span class="built_in">game</span>(eft_pid); <span class="comment">// 4. Patch 游戏进程中的 HWID 校验</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="模块一：Disabler-——-BattlEye-禁用核心"><a href="#模块一：Disabler-——-BattlEye-禁用核心" class="headerlink" title="模块一：Disabler —— BattlEye 禁用核心"></a>模块一：Disabler —— BattlEye 禁用核心</h2><p>这是整个 Bypass 的<strong>核心模块</strong>。它的原理是：<strong>既然 BattlEye 通过启动器启动游戏，那就 Hook 启动器的进程创建函数，把 BattlEye 从启动链中移除。</strong></p>
+<h3 id="1-Hook-CreateProcessInternalW"><a href="#1-Hook-CreateProcessInternalW" class="headerlink" title="1. Hook CreateProcessInternalW"></a>1. Hook CreateProcessInternalW</h3><p>使用 Detours Hook <code>KernelBase.dll!CreateProcessInternalW</code>，这是 Windows 创建进程的底层内部函数（<code>CreateProcess</code> 系列最终都会调用它）：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">oCreateProcessInternalW = <span class="built_in">reinterpret_cast</span>&lt;CreateProcessInternalW_t&gt;(</span><br><span class="line">    <span class="built_in">DetourFindFunction</span>(<span class="string">&quot;KernelBase.dll&quot;</span>, <span class="string">&quot;CreateProcessInternalW&quot;</span>)</span><br><span class="line">);</span><br><span class="line"><span class="built_in">DetourAttach</span>(&amp;oCreateProcessInternalW, hkCreateProcessInternalW);</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-替换启动目标：绕过-BattlEye-进程"><a href="#2-替换启动目标：绕过-BattlEye-进程" class="headerlink" title="2. 替换启动目标：绕过 BattlEye 进程"></a>2. 替换启动目标：绕过 BattlEye 进程</h3><p>正常流程中，启动器会创建 <code>EscapeFromTarkov_BE.exe</code>（BattlEye 保护壳），由它再启动真正的游戏进程。Hook 函数检测到命令行包含 <code>EscapeFromTarkov_BE</code> 时，<strong>直接将其替换为 <code>EscapeFromTarkov</code></strong>：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (lpCommandLine &amp;&amp; <span class="built_in">wcsstr</span>(lpCommandLine, <span class="string">L&quot;EscapeFromTarkov_BE&quot;</span>))</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">auto</span> commandLine = std::<span class="built_in">regex_replace</span>(</span><br><span class="line">        lpCommandLine, std::<span class="built_in">wregex</span>(<span class="string">L&quot;EscapeFromTarkov_BE&quot;</span>), <span class="string">L&quot;EscapeFromTarkov&quot;</span></span><br><span class="line">    );</span><br><span class="line">    <span class="comment">// 以 CREATE_SUSPENDED 方式直接启动游戏本体</span></span><br><span class="line">    <span class="built_in">oCreateProcessInternalW</span>(..., CREATE_SUSPENDED, ...);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这样 BattlEye 的启动器进程 (<code>EscapeFromTarkov_BE.exe</code>) 根本不会被创建，<code>BEService</code> 和 <code>BEClient.dll</code> 也就无从加载。</p>
+<h3 id="3-入口点陷阱（Entry-Point-Trap）"><a href="#3-入口点陷阱（Entry-Point-Trap）" class="headerlink" title="3. 入口点陷阱（Entry Point Trap）"></a>3. 入口点陷阱（Entry Point Trap）</h3><p>游戏进程以 <code>CREATE_SUSPENDED</code> 状态创建后，Bypass 在游戏的入口点写入一个<strong>无限循环</strong> <code>0xEB 0xFE</code>（<code>jmp $</code>），然后恢复线程：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">patch_bytes</span>(hProcess, entry, &#123;<span class="number">0xEB</span>, <span class="number">0xFE</span>&#125;); <span class="comment">// jmp $ (无限自跳)</span></span><br><span class="line"><span class="built_in">ResumeThread</span>(hThread);</span><br><span class="line"><span class="comment">// 轮询等待 RIP 到达入口点</span></span><br><span class="line"><span class="keyword">for</span> (...; context.Rip != entry; <span class="built_in">Sleep</span>(<span class="number">100</span>))</span><br><span class="line">&#123;</span><br><span class="line">    <span class="built_in">GetThreadContext</span>(hThread, &amp;context);</span><br><span class="line">&#125;</span><br><span class="line"><span class="built_in">SuspendThread</span>(hThread); <span class="comment">// RIP 已停在入口点，再次挂起</span></span><br></pre></td></tr></table></figure>
+
+<p>这个技巧的目的是：让 Windows 完成进程初始化（加载所有依赖 DLL，特别是 <code>UnityPlayer.dll</code>），但阻止游戏代码执行。在 <code>CREATE_SUSPENDED</code> 状态下模块还未加载，而 <code>0xEB FE</code> 保证线程恢复后立刻卡住在 Entry Point，此时所有 DLL 已映射完毕。</p>
+<h3 id="4-Patch-UnityPlayer-dll-的-BE-服务检查"><a href="#4-Patch-UnityPlayer-dll-的-BE-服务检查" class="headerlink" title="4. Patch UnityPlayer.dll 的 BE 服务检查"></a>4. Patch UnityPlayer.dll 的 BE 服务检查</h3><p>进程初始化完毕后，在 <code>UnityPlayer.dll</code> 中通过特征码搜索 BattlEye 服务检查函数：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">std::string checkBeServicePattern =</span><br><span class="line">    <span class="string">&quot;48 89 5C 24 ? 48 89 6C 24 ? 56 57 41 56 48 83 EC ? 33 C0 0F 57 C0&quot;</span>;</span><br><span class="line">UINT64 checkBeServiceOffset = globals::<span class="built_in">find_pattern</span>(</span><br><span class="line">    checkBeServicePattern, unityModule, unityInfo.SizeOfImage);</span><br></pre></td></tr></table></figure>
+
+<p>找到后直接 Patch 为<strong>返回 true</strong>：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// B0 01  mov al, 1</span></span><br><span class="line"><span class="comment">// C3     ret</span></span><br><span class="line"><span class="built_in">patch_bytes</span>(hProcess, beCheckFunc, &#123;<span class="number">0xB0</span>, <span class="number">0x01</span>, <span class="number">0xC3</span>&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>Unity 引擎在初始化时会调用该函数检查 BattlEye 服务是否正常运行。Patch 后该函数永远返回 <code>true</code>，Unity 层面认为 BE 一切正常，不会弹出错误。</p>
+<h3 id="5-Patch-GameAssembly-dll-的反作弊验证"><a href="#5-Patch-GameAssembly-dll-的反作弊验证" class="headerlink" title="5. Patch GameAssembly.dll 的反作弊验证"></a>5. Patch GameAssembly.dll 的反作弊验证</h3><p>等 <code>GameAssembly.dll</code> 加载后，Patch 游戏逻辑中的反作弊初始化异步方法：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// TarkovApplication.&lt;ValidateAnticheat&gt;d__64.MoveNext</span></span><br><span class="line"><span class="keyword">constexpr</span> UINT64 anticheatMoveNextRVA = <span class="number">0xF362C0</span>;</span><br><span class="line"><span class="built_in">patch_bytes</span>(hProcess, anticheatFunc, &#123;<span class="number">0xC3</span>&#125;); <span class="comment">// ret</span></span><br></pre></td></tr></table></figure>
+
+<p>这里 Patch 的是 C# 异步状态机 <code>MoveNext</code> 方法（IL2CPP 编译后的本地代码）。直接 <code>ret</code> 使异步 Task 永远不会推进，反作弊初始化流程<strong>静默挂起</strong>——不会报错，也不会完成。</p>
+<h3 id="6-恢复入口点并启动游戏"><a href="#6-恢复入口点并启动游戏" class="headerlink" title="6. 恢复入口点并启动游戏"></a>6. 恢复入口点并启动游戏</h3><p>所有 Patch 完成后，恢复原始入口点字节并让游戏执行：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">patch_bytes</span>(hProcess, entry, buf); <span class="comment">// 还原原始字节</span></span><br><span class="line"><span class="built_in">ResumeThread</span>(hThread);             <span class="comment">// 游戏正常启动</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="模块二：Spoofer-——-HWID-欺骗"><a href="#模块二：Spoofer-——-HWID-欺骗" class="headerlink" title="模块二：Spoofer —— HWID 欺骗"></a>模块二：Spoofer —— HWID 欺骗</h2><h3 id="目的"><a href="#目的" class="headerlink" title="目的"></a>目的</h3><p>BattlEye 会采集硬件指纹（HWID）用于封禁。即使绕过了 BE 的实时保护，如果 HWID 已被标记，账号依然会被封。Spoofer 的目标是让 <strong>Launcher 和 Game 读取到的硬件信息都是伪造的</strong>。</p>
+<h3 id="Launcher-侧-Hook"><a href="#Launcher-侧-Hook" class="headerlink" title="Launcher 侧 Hook"></a>Launcher 侧 Hook</h3><p>在 Launcher 进程中 Hook 两个 API：</p>
+<h4 id="1-GetSystemFirmwareTable-——-SMBIOS-数据伪造"><a href="#1-GetSystemFirmwareTable-——-SMBIOS-数据伪造" class="headerlink" title="(1) GetSystemFirmwareTable —— SMBIOS 数据伪造"></a>(1) <code>GetSystemFirmwareTable</code> —— SMBIOS 数据伪造</h4><p>Hook <code>KernelBase.dll!GetSystemFirmwareTable</code>，当检测到读取 SMBIOS 表（<code>&#39;RSMB&#39;</code>）时，对返回数据中的敏感字段进行异或混淆：</p>
+<ul>
+<li><strong>Type 0</strong>（BIOS Information）：Vendor、BiosVersion、BiosReleaseDate</li>
+<li><strong>Type 1</strong>（System Information）：Manufacturer、ProductName、SerialNumber、UUID</li>
+<li><strong>Type 2</strong>（Baseboard Information）：Manufacturer、ProductName、SerialNumber</li>
+<li><strong>Type 4</strong>（Processor Information）：ProcessorId、SerialNumber</li>
+</ul>
+<p>使用随机生成（或从 <code>hwid.bin</code> 文件加载）的 Key 进行确定性 XOR 变换，确保每次启动使用同一个 Key 时 HWID 一致。</p>
+<h4 id="2-CWbemObject-Get-——-WMI-查询结果伪造"><a href="#2-CWbemObject-Get-——-WMI-查询结果伪造" class="headerlink" title="(2) CWbemObject::Get —— WMI 查询结果伪造"></a>(2) <code>CWbemObject::Get</code> —— WMI 查询结果伪造</h4><p>Hook <code>fastprox.dll</code> 中的 <code>CWbemObject::Get</code> 方法。WMI（Windows Management Instrumentation）是另一个常用的硬件信息采集途径。Hook 后对所有返回的 <code>VT_BSTR</code> 类型字符串中的数字字符进行 XOR 变换。</p>
+<h3 id="Game-侧-Patch"><a href="#Game-侧-Patch" class="headerlink" title="Game 侧 Patch"></a>Game 侧 Patch</h3><p>在游戏进程的 <code>GameAssembly.dll</code> 中搜索 HWID 校验函数的特征码：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">const</span> std::string NEEDS_HWID_CHECK_SIG =</span><br><span class="line">    <span class="string">&quot;E8 ? ? ? ? 48 85 C0 0F 84 ? ? ? ? 33 D2 48 8D 4C 24 ? E8 ? ? ? ? ? ? ? 0F 11 44 24&quot;</span>;</span><br></pre></td></tr></table></figure>
+
+<p>找到后用 <code>xor rax, rax; nop; nop</code> 替换 <code>call</code> 指令：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">byte shellcode[<span class="number">5</span>] = &#123;</span><br><span class="line">    <span class="number">0x48</span>, <span class="number">0x31</span>, <span class="number">0xC0</span>, <span class="comment">// xor rax, rax  -&gt; 返回 NULL</span></span><br><span class="line">    <span class="number">0x90</span>,             <span class="comment">// nop</span></span><br><span class="line">    <span class="number">0x90</span>              <span class="comment">// nop</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>原本这里是 <code>call</code> 获取 HWID 信息的函数，Patch 后 <code>rax = 0</code>（NULL），后续代码检测到返回值为空就跳过 HWID 上报逻辑。</p>
+<h2 id="模块三：Injector-——-DLL-注入与隐藏"><a href="#模块三：Injector-——-DLL-注入与隐藏" class="headerlink" title="模块三：Injector —— DLL 注入与隐藏"></a>模块三：Injector —— DLL 注入与隐藏</h2><h3 id="注入方式"><a href="#注入方式" class="headerlink" title="注入方式"></a>注入方式</h3><p>经典的 <code>LoadLibraryA</code> 远程线程注入：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">LPVOID mem = <span class="built_in">VirtualAllocEx</span>(eft, <span class="literal">nullptr</span>, <span class="built_in">strlen</span>(dll)<span class="number">+1</span>, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);</span><br><span class="line"><span class="built_in">WriteProcessMemory</span>(eft, mem, dll, <span class="built_in">strlen</span>(dll)<span class="number">+1</span>, <span class="literal">nullptr</span>);</span><br><span class="line"><span class="built_in">CreateRemoteThread</span>(eft, <span class="literal">nullptr</span>, <span class="number">0</span>, (LPTHREAD_START_ROUTINE)fnLoadLibrary, mem, <span class="number">0</span>, <span class="literal">nullptr</span>);</span><br></pre></td></tr></table></figure>
+
+<p>注入时机是在<strong>入口点陷阱期间</strong>（游戏挂起在 <code>0xEB FE</code> 时），这保证了 DLL 在游戏代码运行之前加载。</p>
+<h3 id="模块隐藏"><a href="#模块隐藏" class="headerlink" title="模块隐藏"></a>模块隐藏</h3><p>注入完成后，通过操纵目标进程的 PEB（Process Environment Block）中的 LDR（Loader Data）链表来隐藏 DLL：</p>
+<ol>
+<li><strong>解链（Unlink）</strong>：从 <code>InLoadOrderModuleList</code>、<code>InMemoryOrderModuleList</code>、<code>InInitializationOrderModuleList</code> 三条双向链表中移除目标模块的节点</li>
+<li><strong>伪装名称</strong>：将模块名改为 <code>X3DAudio1_7.dll</code>，路径改为 <code>C:\Windows\System32\X3DAudio1_7.dll</code></li>
+<li><strong>随机化元数据</strong>：<code>DllBase</code> 和 <code>SizeOfImage</code> 设为随机值</li>
+<li><strong>擦除 PE 头</strong>：用随机数据覆盖 DOS Header + NT Headers + Section Headers</li>
+</ol>
+<p>这使得通过 <code>EnumProcessModules</code> 或遍历 LDR 链表无法找到注入的 DLL。</p>
+<h2 id="为什么这样就能-Bypass-BattlEye？"><a href="#为什么这样就能-Bypass-BattlEye？" class="headerlink" title="为什么这样就能 Bypass BattlEye？"></a>为什么这样就能 Bypass BattlEye？</h2><p>BattlEye 的保护架构依赖于<strong>启动链的完整性</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">BsgLauncher.exe</span><br><span class="line">  └─&gt; EscapeFromTarkov_BE.exe   (BattlEye 启动器)</span><br><span class="line">        ├─&gt; BEService.exe        (内核态反作弊服务)</span><br><span class="line">        ├─&gt; BEClient.dll         (用户态反作弊模块，注入游戏进程)</span><br><span class="line">        └─&gt; EscapeFromTarkov.exe (游戏本体)</span><br></pre></td></tr></table></figure>
+
+<p>这个 Bypass 的核心思路是<strong>从源头切断 BattlEye 的整条启动链</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>层级</th>
+<th>正常流程</th>
+<th>Bypass 后</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>进程创建</td>
+<td>Launcher → <code>EscapeFromTarkov_BE.exe</code> → 游戏</td>
+<td>Launcher → <strong>直接启动</strong> <code>EscapeFromTarkov.exe</code></td>
+</tr>
+<tr>
+<td>BE 服务</td>
+<td><code>BEService.exe</code> 启动并注入 <code>BEClient.dll</code></td>
+<td><strong>从不启动</strong>，<code>BEClient.dll</code> 从未加载</td>
+</tr>
+<tr>
+<td>Unity 检查</td>
+<td><code>UnityPlayer.dll</code> 检查 BE 服务状态</td>
+<td><strong>Patch 为返回 true</strong>，跳过检查</td>
+</tr>
+<tr>
+<td>游戏逻辑检查</td>
+<td><code>ValidateAnticheat</code> 异步任务验证 BE</td>
+<td><strong>Patch <code>MoveNext</code> 为 <code>ret</code></strong>，Task 永远不完成</td>
+</tr>
+<tr>
+<td>HWID 采集</td>
+<td>SMBIOS + WMI 读取真实硬件信息</td>
+<td><strong>Hook 返回混淆后的假数据</strong></td>
+</tr>
+<tr>
+<td>HWID 上报</td>
+<td><code>GameAssembly.dll</code> 中的函数上报 HWID</td>
+<td><strong>Patch call 为 <code>xor rax,rax</code></strong>，返回 NULL 跳过</td>
+</tr>
+</tbody></table>
+<p>关键在于：</p>
+<ol>
+<li><strong>BattlEye 的用户态保护 (<code>BEClient.dll</code>) 根本没有加载</strong>，所以它的内存扫描、模块检测、代码完整性校验等功能<strong>全部不生效</strong></li>
+<li><strong>BattlEye 的内核态服务 (<code>BEService</code>) 也没有启动</strong>，所以驱动级的保护（如阻止非签名模块加载）同样不存在</li>
+<li>Unity 引擎和游戏逻辑层面的两道额外检查都被 Patch 掉了</li>
+<li>HWID 在 Launcher 和 Game 两侧都做了伪造，防止硬件层面的追踪</li>
+</ol>
+<p>简单来说：<strong>BattlEye 从未被加载，自然也无法进行任何保护。</strong> 而游戏中检查 “BE 是否正常运行” 的代码也被 Patch，使得游戏可以照常运行而不会因为缺少反作弊而弹窗退出。</p>
+<h2 id="技术细节总结"><a href="#技术细节总结" class="headerlink" title="技术细节总结"></a>技术细节总结</h2><table>
+<thead>
+<tr>
+<th>技术</th>
+<th>具体实现</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Hook 框架</td>
+<td>Microsoft Detours（Inline Hook）</td>
+</tr>
+<tr>
+<td>进程拦截目标</td>
+<td><code>KernelBase!CreateProcessInternalW</code></td>
+</tr>
+<tr>
+<td>入口点控制</td>
+<td><code>0xEB FE</code> 无限循环 trap → 等待初始化完成 → 还原</td>
+</tr>
+<tr>
+<td>特征码搜索</td>
+<td>自定义 Pattern Scanner（支持通配符 <code>?</code>）</td>
+</tr>
+<tr>
+<td>UnityPlayer Patch</td>
+<td>BE 服务检测函数 → <code>mov al,1; ret</code></td>
+</tr>
+<tr>
+<td>GameAssembly Patch</td>
+<td>异步 <code>MoveNext</code> → <code>ret</code>；HWID call → <code>xor rax,rax</code></td>
+</tr>
+<tr>
+<td>HWID 伪造</td>
+<td>Hook <code>GetSystemFirmwareTable</code> + <code>CWbemObject::Get</code></td>
+</tr>
+<tr>
+<td>模块隐藏</td>
+<td>PEB LDR 链表解链 + 名称伪装 + PE 头擦除</td>
+</tr>
+<tr>
+<td>注入方式</td>
+<td><code>LoadLibraryA</code> + <code>CreateRemoteThread</code></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>注</strong>：该分析基于公开的逆向工程学习项目 <a target="_blank" rel="noopener" href="https://www.unknowncheats.me/forum/escape-from-tarkov/728902-pve-battleyent-alternative.html">PVE BattlEye Bypass by x3e</a> 和 <a target="_blank" rel="noopener" href="https://www.unknowncheats.me/forum/escape-from-tarkov/494040-hwho-slightly-fun-bsg-launcher-hwid-check-bypass.html">HWho by hollow</a>，仅供技术研究参考。</p>
+</blockquote>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E9%80%86%E5%90%91%E5%B7%A5%E7%A8%8B/" rel="tag"># 逆向工程</a>
+              <a href="/tags/Unity/" rel="tag"># Unity</a>
+              <a href="/tags/BattlEye/" rel="tag"># BattlEye</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/03/31/Godot-%E6%89%93%E5%8C%85/" rel="prev" title="Godot4 打包">
+                  <i class="fa fa-angle-left"></i> Godot4 打包
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">JoJoJoin</span>
+  </div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>
