@@ -58,6 +58,8 @@
 
   
 
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":"default","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
 
 
 
@@ -245,7 +247,66 @@
 <li><strong>库监控（Library Monitor）</strong> — 枚举进程及模块，将未验证的 DLL 信息通过 HTTPS 上报服务器</li>
 </ol>
 <hr>
-<h2 id="流程总览"><a href="#流程总览" class="headerlink" title="流程总览"></a>流程总览</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line">flowchart TD</span><br><span class="line">    subgraph ModuleReg[&quot;模块注册阶段 (CRT初始化)&quot;]</span><br><span class="line">        A[&quot;sub_180028A20\n注册 BE Service 模块&quot;] --&gt;|&quot;sub_1808D2640\n链表插入&quot;| B[&quot;Init: sub_180E45CE0\nCleanup: sub_180E45CA0&quot;]</span><br><span class="line">        C[&quot;sub_180028D40\n注册 Guard 单例模块&quot;] --&gt;|&quot;sub_1808D2640\n链表插入&quot;| D[&quot;Init: sub_180E4E550\nCleanup: Guard析构&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph BEInit[&quot;BEService 对象初始化&quot;]</span><br><span class="line">        B --&gt; E[&quot;分配16字节对象\n→ qword_181A23C00&quot;]</span><br><span class="line">        E --&gt; F[&quot;type=10, timestamp=0.0&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph GuardInit[&quot;Guard 单例初始化&quot;]</span><br><span class="line">        D --&gt; G[&quot;分配104字节对象\n→ qword_181A23D40&quot;]</span><br><span class="line">        G --&gt; H[&quot;sub_18030D130\nBCrypt SHA256 Provider&quot;]</span><br><span class="line">        G --&gt; I[&quot;sub_180741610\nDLL签名白名单 (~60项)&quot;]</span><br><span class="line">        G --&gt; J[&quot;sub_1805CB7F0\n命令行参数存储&quot;]</span><br><span class="line">        G --&gt; K[&quot;sub_18029F410\n进程/模块扫描器&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph MainInit[&quot;主初始化 sub_1800DE2A0&quot;]</span><br><span class="line">        L[&quot;Unity Player 启动&quot;] --&gt; M&#123;&quot;qword_181A23C00\n存在?&quot;&#125;</span><br><span class="line">        M --&gt;|Yes| N[&quot;记录时间戳\nsub_18054B2C0()&quot;]</span><br><span class="line">        N --&gt; O[&quot;sub_180491E60\nBEService 状态检查&quot;]</span><br><span class="line">        M --&gt;|No| P[&quot;跳过BE检查&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph BECheck[&quot;BEService 检查 sub_180491E60&quot;]</span><br><span class="line">        O --&gt; Q[&quot;OpenSCManagerA&quot;]</span><br><span class="line">        Q --&gt; R[&quot;OpenServiceA\n&#x27;BEService&#x27;&quot;]</span><br><span class="line">        R --&gt; S[&quot;QueryServiceStatusEx&quot;]</span><br><span class="line">        S --&gt; T&#123;&quot;dwCurrentState\n== 4 ?&quot;&#125;</span><br><span class="line">        T --&gt;|Yes| U[&quot;检查通过 ✓&quot;]</span><br><span class="line">        T --&gt;|No| V[&quot;sub_180311C40\n致命错误退出&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph MsgLoop[&quot;消息循环 sub_180E44B60&quot;]</span><br><span class="line">        W[&quot;Windows 消息循环&quot;] --&gt; X&#123;&quot;elapsed &gt;\n60秒?&quot;&#125;</span><br><span class="line">        X --&gt;|Yes| Y[&quot;sub_180E427C0\n启动异步任务&quot;]</span><br><span class="line">        Y --&gt; Z[&quot;异步执行\nsub_180491E60&quot;]</span><br><span class="line">        Z --&gt; W</span><br><span class="line">        X --&gt;|No| W</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    subgraph LibMonitor[&quot;库监控 sub_180E4D880&quot;]</span><br><span class="line">        AA[&quot;进入 CriticalSection&quot;] --&gt; AB[&quot;sub_180E4C5A0\n进程枚举&quot;]</span><br><span class="line">        AB --&gt; AC[&quot;sub_180E4C780\n模块枚举&quot;]</span><br><span class="line">        AC --&gt; AD&#123;&quot;模块已验证?&quot;&#125;</span><br><span class="line">        AD --&gt;|No| AE[&quot;sub_180E4AF90\n获取模块信息&quot;]</span><br><span class="line">        AE --&gt; AF[&quot;sub_180E4DDF0\nHTTPS POST\n/client/libraries&quot;]</span><br><span class="line">        AF --&gt; AG&#123;&quot;HTTP 200/201?&quot;&#125;</span><br><span class="line">        AG --&gt;|Yes| AH[&quot;标记已验证&quot;]</span><br><span class="line">        AG --&gt;|No| AI[&quot;保持未验证&quot;]</span><br><span class="line">        AD --&gt;|Yes| AJ[&quot;跳过&quot;]</span><br><span class="line">    end</span><br><span class="line"></span><br><span class="line">    ModuleReg --&gt; BEInit</span><br><span class="line">    ModuleReg --&gt; GuardInit</span><br><span class="line">    BEInit --&gt; MainInit</span><br><span class="line">    MainInit --&gt; MsgLoop</span><br><span class="line">    GuardInit --&gt; LibMonitor</span><br></pre></td></tr></table></figure>
+<h2 id="流程总览"><a href="#流程总览" class="headerlink" title="流程总览"></a>流程总览</h2><pre><code class="highlight mermaid">flowchart TD
+    subgraph ModuleReg[&quot;模块注册阶段 (CRT初始化)&quot;]
+        A[&quot;sub_180028A20\n注册 BE Service 模块&quot;] --&gt;|&quot;sub_1808D2640\n链表插入&quot;| B[&quot;Init: sub_180E45CE0\nCleanup: sub_180E45CA0&quot;]
+        C[&quot;sub_180028D40\n注册 Guard 单例模块&quot;] --&gt;|&quot;sub_1808D2640\n链表插入&quot;| D[&quot;Init: sub_180E4E550\nCleanup: Guard析构&quot;]
+    end
+
+    subgraph BEInit[&quot;BEService 对象初始化&quot;]
+        B --&gt; E[&quot;分配16字节对象\n→ qword_181A23C00&quot;]
+        E --&gt; F[&quot;type=10, timestamp=0.0&quot;]
+    end
+
+    subgraph GuardInit[&quot;Guard 单例初始化&quot;]
+        D --&gt; G[&quot;分配104字节对象\n→ qword_181A23D40&quot;]
+        G --&gt; H[&quot;sub_18030D130\nBCrypt SHA256 Provider&quot;]
+        G --&gt; I[&quot;sub_180741610\nDLL签名白名单 (~60项)&quot;]
+        G --&gt; J[&quot;sub_1805CB7F0\n命令行参数存储&quot;]
+        G --&gt; K[&quot;sub_18029F410\n进程/模块扫描器&quot;]
+    end
+
+    subgraph MainInit[&quot;主初始化 sub_1800DE2A0&quot;]
+        L[&quot;Unity Player 启动&quot;] --&gt; M&#123;&quot;qword_181A23C00\n存在?&quot;&#125;
+        M --&gt;|Yes| N[&quot;记录时间戳\nsub_18054B2C0()&quot;]
+        N --&gt; O[&quot;sub_180491E60\nBEService 状态检查&quot;]
+        M --&gt;|No| P[&quot;跳过BE检查&quot;]
+    end
+
+    subgraph BECheck[&quot;BEService 检查 sub_180491E60&quot;]
+        O --&gt; Q[&quot;OpenSCManagerA&quot;]
+        Q --&gt; R[&quot;OpenServiceA\n&#x27;BEService&#x27;&quot;]
+        R --&gt; S[&quot;QueryServiceStatusEx&quot;]
+        S --&gt; T&#123;&quot;dwCurrentState\n== 4 ?&quot;&#125;
+        T --&gt;|Yes| U[&quot;检查通过 ✓&quot;]
+        T --&gt;|No| V[&quot;sub_180311C40\n致命错误退出&quot;]
+    end
+
+    subgraph MsgLoop[&quot;消息循环 sub_180E44B60&quot;]
+        W[&quot;Windows 消息循环&quot;] --&gt; X&#123;&quot;elapsed &gt;\n60秒?&quot;&#125;
+        X --&gt;|Yes| Y[&quot;sub_180E427C0\n启动异步任务&quot;]
+        Y --&gt; Z[&quot;异步执行\nsub_180491E60&quot;]
+        Z --&gt; W
+        X --&gt;|No| W
+    end
+
+    subgraph LibMonitor[&quot;库监控 sub_180E4D880&quot;]
+        AA[&quot;进入 CriticalSection&quot;] --&gt; AB[&quot;sub_180E4C5A0\n进程枚举&quot;]
+        AB --&gt; AC[&quot;sub_180E4C780\n模块枚举&quot;]
+        AC --&gt; AD&#123;&quot;模块已验证?&quot;&#125;
+        AD --&gt;|No| AE[&quot;sub_180E4AF90\n获取模块信息&quot;]
+        AE --&gt; AF[&quot;sub_180E4DDF0\nHTTPS POST\n/client/libraries&quot;]
+        AF --&gt; AG&#123;&quot;HTTP 200/201?&quot;&#125;
+        AG --&gt;|Yes| AH[&quot;标记已验证&quot;]
+        AG --&gt;|No| AI[&quot;保持未验证&quot;]
+        AD --&gt;|Yes| AJ[&quot;跳过&quot;]
+    end
+
+    ModuleReg --&gt; BEInit
+    ModuleReg --&gt; GuardInit
+    BEInit --&gt; MainInit
+    MainInit --&gt; MsgLoop
+    GuardInit --&gt; LibMonitor</code></pre>
 
 <hr>
 <h2 id="关键数据结构与全局变量"><a href="#关键数据结构与全局变量" class="headerlink" title="关键数据结构与全局变量"></a>关键数据结构与全局变量</h2><h3 id="全局变量"><a href="#全局变量" class="headerlink" title="全局变量"></a>全局变量</h3><table>
