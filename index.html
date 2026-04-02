@@ -208,9 +208,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-04-02 23:35:18 / 修改时间：23:51:55" itemprop="dateCreated datePublished" datetime="2026-04-02T23:35:18+08:00">2026-04-02</time>
+      <time title="创建时间：2026-04-02 23:35:18" itemprop="dateCreated datePublished" datetime="2026-04-02T23:35:18+08:00">2026-04-02</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-04-03 00:00:12" itemprop="dateModified" datetime="2026-04-03T00:00:12+08:00">2026-04-03</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -241,66 +247,69 @@
 <li><strong>库监控（Library Monitor）</strong> — 枚举进程及模块，将未验证的 DLL 信息通过 HTTPS 上报服务器</li>
 </ol>
 <hr>
-<h2 id="流程总览"><a href="#流程总览" class="headerlink" title="流程总览"></a>流程总览</h2><pre><code class="highlight mermaid">flowchart TD
-    subgraph ModuleReg[&quot;模块注册阶段 (CRT初始化)&quot;]
-        A[&quot;sub_180028A20\n注册 BE Service 模块&quot;] --&gt;|&quot;sub_1808D2640\n链表插入&quot;| B[&quot;Init: sub_180E45CE0\nCleanup: sub_180E45CA0&quot;]
-        C[&quot;sub_180028D40\n注册 Guard 单例模块&quot;] --&gt;|&quot;sub_1808D2640\n链表插入&quot;| D[&quot;Init: sub_180E4E550\nCleanup: Guard析构&quot;]
-    end
+<h2 id="流程总览"><a href="#流程总览" class="headerlink" title="流程总览"></a>流程总览</h2><h3 id="1-模块注册与初始化"><a href="#1-模块注册与初始化" class="headerlink" title="1. 模块注册与初始化"></a>1. 模块注册与初始化</h3><pre><code class="highlight mermaid">flowchart TD
+    A[&quot;sub_180028A20&lt;br/&gt;注册 BE Service 模块&quot;] --&gt;|&quot;sub_1808D2640&lt;br/&gt;链表插入&quot;| B[&quot;Init: sub_180E45CE0&lt;br/&gt;Cleanup: sub_180E45CA0&quot;]
+    C[&quot;sub_180028D40&lt;br/&gt;注册 Guard 单例模块&quot;] --&gt;|&quot;sub_1808D2640&lt;br/&gt;链表插入&quot;| D[&quot;Init: sub_180E4E550&lt;br/&gt;Cleanup: Guard析构&quot;]
+    B --&gt; E[&quot;分配16字节对象&lt;br/&gt;→ qword_181A23C00&quot;]
+    E --&gt; F[&quot;type=10, timestamp=0.0&quot;]
+    D --&gt; G[&quot;分配104字节对象&lt;br/&gt;→ qword_181A23D40&quot;]
+    G --&gt; H[&quot;BCrypt SHA256 Provider&quot;]
+    G --&gt; I[&quot;DLL签名白名单 ~60项&quot;]
+    G --&gt; J[&quot;命令行参数存储&quot;]
+    G --&gt; K[&quot;进程/模块扫描器&quot;]
 
-    subgraph BEInit[&quot;BEService 对象初始化&quot;]
-        B --&gt; E[&quot;分配16字节对象\n→ qword_181A23C00&quot;]
-        E --&gt; F[&quot;type=10, timestamp=0.0&quot;]
-    end
+    style A fill:#4a9eff,color:#fff
+    style C fill:#4a9eff,color:#fff
+    style E fill:#ffa94d,color:#fff
+    style G fill:#ffa94d,color:#fff</code></pre>
 
-    subgraph GuardInit[&quot;Guard 单例初始化&quot;]
-        D --&gt; G[&quot;分配104字节对象\n→ qword_181A23D40&quot;]
-        G --&gt; H[&quot;sub_18030D130\nBCrypt SHA256 Provider&quot;]
-        G --&gt; I[&quot;sub_180741610\nDLL签名白名单 (~60项)&quot;]
-        G --&gt; J[&quot;sub_1805CB7F0\n命令行参数存储&quot;]
-        G --&gt; K[&quot;sub_18029F410\n进程/模块扫描器&quot;]
-    end
+<h3 id="2-主初始化-BEService-检查"><a href="#2-主初始化-BEService-检查" class="headerlink" title="2. 主初始化 BEService 检查"></a>2. 主初始化 BEService 检查</h3><pre><code class="highlight mermaid">flowchart TD
+    L[&quot;Unity Player 启动&lt;br/&gt;sub_1800DE2A0&quot;] --&gt; M&#123;&quot;qword_181A23C00&lt;br/&gt;存在?&quot;&#125;
+    M --&gt;|Yes| N[&quot;记录时间戳&quot;]
+    N --&gt; O[&quot;sub_180491E60&lt;br/&gt;BEService 状态检查&quot;]
+    M --&gt;|No| P[&quot;跳过BE检查&quot;]
+    O --&gt; Q[&quot;OpenSCManagerA&quot;]
+    Q --&gt; R[&quot;OpenServiceA&lt;br/&gt;BEService&quot;]
+    R --&gt; S[&quot;QueryServiceStatusEx&quot;]
+    S --&gt; T&#123;&quot;dwCurrentState&lt;br/&gt;== 4 ?&quot;&#125;
+    T --&gt;|&quot;Yes&quot;| U[&quot;检查通过 ✓&quot;]
+    T --&gt;|&quot;No&quot;| V[&quot;致命错误退出&lt;br/&gt;ErrorCode 33/34/35&quot;]
 
-    subgraph MainInit[&quot;主初始化 sub_1800DE2A0&quot;]
-        L[&quot;Unity Player 启动&quot;] --&gt; M&#123;&quot;qword_181A23C00\n存在?&quot;&#125;
-        M --&gt;|Yes| N[&quot;记录时间戳\nsub_18054B2C0()&quot;]
-        N --&gt; O[&quot;sub_180491E60\nBEService 状态检查&quot;]
-        M --&gt;|No| P[&quot;跳过BE检查&quot;]
-    end
+    style L fill:#4a9eff,color:#fff
+    style U fill:#51cf66,color:#fff
+    style V fill:#ff6b6b,color:#fff</code></pre>
 
-    subgraph BECheck[&quot;BEService 检查 sub_180491E60&quot;]
-        O --&gt; Q[&quot;OpenSCManagerA&quot;]
-        Q --&gt; R[&quot;OpenServiceA\n&#x27;BEService&#x27;&quot;]
-        R --&gt; S[&quot;QueryServiceStatusEx&quot;]
-        S --&gt; T&#123;&quot;dwCurrentState\n== 4 ?&quot;&#125;
-        T --&gt;|Yes| U[&quot;检查通过 ✓&quot;]
-        T --&gt;|No| V[&quot;sub_180311C40\n致命错误退出&quot;]
-    end
+<h3 id="3-消息循环定时重检-60秒"><a href="#3-消息循环定时重检-60秒" class="headerlink" title="3. 消息循环定时重检 (60秒)"></a>3. 消息循环定时重检 (60秒)</h3><pre><code class="highlight mermaid">flowchart TD
+    W[&quot;Windows 消息循环&lt;br/&gt;sub_180E44B60&quot;] --&gt; X&#123;&quot;距上次检查&lt;br/&gt;&gt; 60秒?&quot;&#125;
+    X --&gt;|Yes| Y[&quot;sub_180E427C0&lt;br/&gt;启动异步任务&quot;]
+    Y --&gt; Z[&quot;后台线程执行&lt;br/&gt;sub_180491E60&quot;]
+    Z --&gt; W2[&quot;更新时间戳&lt;br/&gt;继续消息循环&quot;]
+    W2 --&gt; W
+    X --&gt;|No| W
 
-    subgraph MsgLoop[&quot;消息循环 sub_180E44B60&quot;]
-        W[&quot;Windows 消息循环&quot;] --&gt; X&#123;&quot;elapsed &gt;\n60秒?&quot;&#125;
-        X --&gt;|Yes| Y[&quot;sub_180E427C0\n启动异步任务&quot;]
-        Y --&gt; Z[&quot;异步执行\nsub_180491E60&quot;]
-        Z --&gt; W
-        X --&gt;|No| W
-    end
+    style W fill:#4a9eff,color:#fff
+    style Y fill:#ffa94d,color:#fff
+    style Z fill:#845ef7,color:#fff</code></pre>
 
-    subgraph LibMonitor[&quot;库监控 sub_180E4D880&quot;]
-        AA[&quot;进入 CriticalSection&quot;] --&gt; AB[&quot;sub_180E4C5A0\n进程枚举&quot;]
-        AB --&gt; AC[&quot;sub_180E4C780\n模块枚举&quot;]
-        AC --&gt; AD&#123;&quot;模块已验证?&quot;&#125;
-        AD --&gt;|No| AE[&quot;sub_180E4AF90\n获取模块信息&quot;]
-        AE --&gt; AF[&quot;sub_180E4DDF0\nHTTPS POST\n/client/libraries&quot;]
-        AF --&gt; AG&#123;&quot;HTTP 200/201?&quot;&#125;
-        AG --&gt;|Yes| AH[&quot;标记已验证&quot;]
-        AG --&gt;|No| AI[&quot;保持未验证&quot;]
-        AD --&gt;|Yes| AJ[&quot;跳过&quot;]
-    end
+<h3 id="4-库监控-Library-Monitor"><a href="#4-库监控-Library-Monitor" class="headerlink" title="4. 库监控 Library Monitor"></a>4. 库监控 Library Monitor</h3><pre><code class="highlight mermaid">flowchart TD
+    AA[&quot;进入 CriticalSection&lt;br/&gt;sub_180E4D880&quot;] --&gt; AB[&quot;进程枚举&lt;br/&gt;CreateToolhelp32Snapshot&quot;]
+    AB --&gt; AC[&quot;模块枚举&lt;br/&gt;K32EnumProcessModulesEx&quot;]
+    AC --&gt; AD&#123;&quot;模块已验证?&lt;br/&gt;byte+24&quot;&#125;
+    AD --&gt;|&quot;Yes&quot;| AJ[&quot;跳过&quot;]
+    AD --&gt;|&quot;No&quot;| AE[&quot;获取模块信息&lt;br/&gt;sub_180E4AF90&quot;]
+    AE --&gt; AF[&quot;提取 session token&lt;br/&gt;正则: -token=...&quot;]
+    AF --&gt; AG[&quot;HTTPS POST&lt;br/&gt;/client/libraries&lt;br/&gt;Port 443&quot;]
+    AG --&gt; AH&#123;&quot;HTTP 200/201?&quot;&#125;
+    AH --&gt;|&quot;Yes&quot;| AI[&quot;标记已验证&lt;br/&gt;byte+24 = 1&quot;]
+    AH --&gt;|&quot;No&quot;| AK[&quot;保持未验证&quot;]
+    AI --&gt; AL[&quot;离开 CriticalSection&quot;]
+    AK --&gt; AL
+    AJ --&gt; AL
 
-    ModuleReg --&gt; BEInit
-    ModuleReg --&gt; GuardInit
-    BEInit --&gt; MainInit
-    MainInit --&gt; MsgLoop
-    GuardInit --&gt; LibMonitor</code></pre>
+    style AA fill:#4a9eff,color:#fff
+    style AG fill:#845ef7,color:#fff
+    style AI fill:#51cf66,color:#fff
+    style AK fill:#ff6b6b,color:#fff</code></pre>
 
 <hr>
 <h2 id="关键数据结构与全局变量"><a href="#关键数据结构与全局变量" class="headerlink" title="关键数据结构与全局变量"></a>关键数据结构与全局变量</h2><h3 id="全局变量"><a href="#全局变量" class="headerlink" title="全局变量"></a>全局变量</h3><table>
