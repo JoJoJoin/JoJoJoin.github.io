@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.1">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"jojojoin.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"tomorrow-night-bright"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":null},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="在上一篇碰撞爆炸粒子特效的基础上，继续为方块角色添加 冲刺（Dash）+ 拖尾（Trail）+ 残影（Ghost） 和 起跳扬尘 + 落地冲击 两套视觉特效。全部通过 GDScript 代码实现，不依赖额外素材。   0. 前置条件本文基于上一篇 《Godot4—2D碰撞爆炸粒子特效》 的项目继续开发。你需要：  Godot 4.x 项目已搭建完成 Player.gd 脚本已实现基本移动、跳跃和">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Godot4—2D冲刺拖尾残影与起落地粒子特效">
+<meta property="og:url" content="https://jojojoin.github.io/2026/04/16/Godot4%E2%80%942D%E5%86%B2%E5%88%BA%E6%8B%96%E5%B0%BE%E6%AE%8B%E5%BD%B1%E4%B8%8E%E8%B5%B7%E8%90%BD%E5%9C%B0%E7%B2%92%E5%AD%90%E7%89%B9%E6%95%88/index.html">
+<meta property="og:site_name" content="JoJoJoin 的博客">
+<meta property="og:description" content="在上一篇碰撞爆炸粒子特效的基础上，继续为方块角色添加 冲刺（Dash）+ 拖尾（Trail）+ 残影（Ghost） 和 起跳扬尘 + 落地冲击 两套视觉特效。全部通过 GDScript 代码实现，不依赖额外素材。   0. 前置条件本文基于上一篇 《Godot4—2D碰撞爆炸粒子特效》 的项目继续开发。你需要：  Godot 4.x 项目已搭建完成 Player.gd 脚本已实现基本移动、跳跃和">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-04-15T16:14:28.000Z">
+<meta property="article:modified_time" content="2026-04-15T16:17:47.739Z">
+<meta property="article:author" content="JoJoJoin">
+<meta property="article:tag" content="Godot">
+<meta property="article:tag" content="游戏开发">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://jojojoin.github.io/2026/04/16/Godot4%E2%80%942D%E5%86%B2%E5%88%BA%E6%8B%96%E5%B0%BE%E6%AE%8B%E5%BD%B1%E4%B8%8E%E8%B5%B7%E8%90%BD%E5%9C%B0%E7%B2%92%E5%AD%90%E7%89%B9%E6%95%88/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://jojojoin.github.io/2026/04/16/Godot4%E2%80%942D%E5%86%B2%E5%88%BA%E6%8B%96%E5%B0%BE%E6%AE%8B%E5%BD%B1%E4%B8%8E%E8%B5%B7%E8%90%BD%E5%9C%B0%E7%B2%92%E5%AD%90%E7%89%B9%E6%95%88/","path":"2026/04/16/Godot4—2D冲刺拖尾残影与起落地粒子特效/","title":"Godot4—2D冲刺拖尾残影与起落地粒子特效"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Godot4—2D冲刺拖尾残影与起落地粒子特效 | JoJoJoin 的博客</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  
+
+  <script class="next-config" data-name="mermaid" type="application/json">{"enable":true,"theme":"default","js":{"url":"https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.10.1/mermaid.min.js","integrity":"sha256-BmQmdWDS8X2OTbrwELWK366LV6escyWhHHe0XCTU/Hk="}}</script>
+  <script src="/js/third-party/tags/mermaid.js" defer></script>
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">JoJoJoin 的博客</p>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">记录学习与生活</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li>
+  </ul>
+</nav>
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#0-%E5%89%8D%E7%BD%AE%E6%9D%A1%E4%BB%B6"><span class="nav-number">1.</span> <span class="nav-text">0. 前置条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%86%B2%E5%88%BA-%E6%8B%96%E5%B0%BE-%E6%AE%8B%E5%BD%B1%E7%B3%BB%E7%BB%9F"><span class="nav-number">2.</span> <span class="nav-text">一、冲刺 + 拖尾 + 残影系统</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E6%95%88%E6%9E%9C%E8%AF%B4%E6%98%8E"><span class="nav-number">2.1.</span> <span class="nav-text">1.1 效果说明</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="nav-number">2.2.</span> <span class="nav-text">1.2 实现原理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%86%B2%E5%88%BA%EF%BC%88Dash%EF%BC%89"><span class="nav-number">2.2.1.</span> <span class="nav-text">冲刺（Dash）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%8B%96%E5%B0%BE%EF%BC%88Trail-%E2%80%94-Line2D%EF%BC%89"><span class="nav-number">2.2.2.</span> <span class="nav-text">拖尾（Trail — Line2D）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%AE%8B%E5%BD%B1%EF%BC%88Ghost-%E2%80%94-ColorRect-Tween%EF%BC%89"><span class="nav-number">2.2.3.</span> <span class="nav-text">残影（Ghost — ColorRect + Tween）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-%E6%B7%BB%E5%8A%A0-Input-Map"><span class="nav-number">2.3.</span> <span class="nav-text">1.3 添加 Input Map</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-4-%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="nav-number">2.4.</span> <span class="nav-text">1.4 代码实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%96%B0%E5%A2%9E%E5%AF%BC%E5%87%BA%E5%8F%98%E9%87%8F"><span class="nav-number">2.4.1.</span> <span class="nav-text">新增导出变量</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%96%B0%E5%A2%9E%E5%86%85%E9%83%A8%E5%8F%98%E9%87%8F"><span class="nav-number">2.4.2.</span> <span class="nav-text">新增内部变量</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9C%A8-ready-%E4%B8%AD%E5%88%9D%E5%A7%8B%E5%8C%96%E6%8B%96%E5%B0%BE"><span class="nav-number">2.4.3.</span> <span class="nav-text">在 _ready() 中初始化拖尾</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BF%AE%E6%94%B9-physics-process"><span class="nav-number">2.4.4.</span> <span class="nav-text">修改 _physics_process()</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%86%B2%E5%88%BA%E6%A0%B8%E5%BF%83%E5%87%BD%E6%95%B0"><span class="nav-number">2.4.5.</span> <span class="nav-text">冲刺核心函数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%8B%96%E5%B0%BE%E6%9B%B4%E6%96%B0"><span class="nav-number">2.4.6.</span> <span class="nav-text">拖尾更新</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%AE%8B%E5%BD%B1%E7%94%9F%E6%88%90"><span class="nav-number">2.4.7.</span> <span class="nav-text">残影生成</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-5-%E5%8E%9F%E7%90%86%E5%9B%BE%E8%A7%A3"><span class="nav-number">2.5.</span> <span class="nav-text">1.5 原理图解</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E8%B5%B7%E8%B7%B3%E6%89%AC%E5%B0%98-%E8%90%BD%E5%9C%B0%E5%86%B2%E5%87%BB%E7%89%B9%E6%95%88"><span class="nav-number">3.</span> <span class="nav-text">二、起跳扬尘 + 落地冲击特效</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E6%95%88%E6%9E%9C%E8%AF%B4%E6%98%8E"><span class="nav-number">3.1.</span> <span class="nav-text">2.1 效果说明</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="nav-number">3.2.</span> <span class="nav-text">2.2 实现原理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%B5%B7%E8%B7%B3%E6%89%AC%E5%B0%98"><span class="nav-number">3.2.1.</span> <span class="nav-text">起跳扬尘</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%90%BD%E5%9C%B0%E5%86%B2%E5%87%BB%EF%BC%88%E5%8A%A8%E6%80%81%E5%BC%BA%E5%BA%A6%E7%BC%A9%E6%94%BE%EF%BC%89"><span class="nav-number">3.2.2.</span> <span class="nav-text">落地冲击（动态强度缩放）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%88%9B%E5%BB%BA%E8%B5%B7%E8%B7%B3%E7%B2%92%E5%AD%90%E8%8A%82%E7%82%B9%EF%BC%88JumpDust%EF%BC%89"><span class="nav-number">3.3.</span> <span class="nav-text">2.3 创建起跳粒子节点（JumpDust）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-%E5%88%9B%E5%BB%BA%E8%90%BD%E5%9C%B0%E7%B2%92%E5%AD%90%E8%8A%82%E7%82%B9%EF%BC%88LandDust%EF%BC%89"><span class="nav-number">3.4.</span> <span class="nav-text">2.4 创建落地粒子节点（LandDust）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-5-%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.5.</span> <span class="nav-text">2.5 代码实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%96%B0%E5%A2%9E%E5%AF%BC%E5%87%BA%E5%8F%98%E9%87%8F-1"><span class="nav-number">3.5.1.</span> <span class="nav-text">新增导出变量</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9C%A8-Inspector-%E4%B8%AD%E7%BB%91%E5%AE%9A%E8%8A%82%E7%82%B9"><span class="nav-number">3.5.2.</span> <span class="nav-text">在 Inspector 中绑定节点</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BF%AE%E6%94%B9%E8%B7%B3%E8%B7%83%E9%80%BB%E8%BE%91%EF%BC%88%E8%A7%A6%E5%8F%91%E8%B5%B7%E8%B7%B3%E7%89%B9%E6%95%88%EF%BC%89"><span class="nav-number">3.5.3.</span> <span class="nav-text">修改跳跃逻辑（触发起跳特效）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BF%AE%E6%94%B9-on-body-entered-%EF%BC%88%E8%A7%A6%E5%8F%91%E8%90%BD%E5%9C%B0%E7%89%B9%E6%95%88%EF%BC%89"><span class="nav-number">3.5.4.</span> <span class="nav-text">修改 _on_body_entered()（触发落地特效）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%89%B9%E6%95%88%E8%A7%A6%E5%8F%91%E5%87%BD%E6%95%B0"><span class="nav-number">3.5.5.</span> <span class="nav-text">特效触发函数</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%AE%8C%E6%95%B4%E4%BB%A3%E7%A0%81"><span class="nav-number">4.</span> <span class="nav-text">三、完整代码</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E6%9C%80%E7%BB%88%E5%9C%BA%E6%99%AF%E6%A0%91"><span class="nav-number">5.</span> <span class="nav-text">四、最终场景树</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E8%B0%83%E5%8F%82%E5%8F%82%E8%80%83"><span class="nav-number">6.</span> <span class="nav-text">五、调参参考</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%B2%E5%88%BA-%E6%8B%96%E5%B0%BE-%E6%AE%8B%E5%BD%B1"><span class="nav-number">6.1.</span> <span class="nav-text">冲刺 &amp; 拖尾 &amp; 残影</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%B5%B7%E8%B7%B3-%E8%90%BD%E5%9C%B0"><span class="nav-number">6.2.</span> <span class="nav-text">起跳 &amp; 落地</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E8%BF%9B%E9%98%B6%E7%8E%A9%E6%B3%95"><span class="nav-number">7.</span> <span class="nav-text">六、进阶玩法</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="JoJoJoin"
+      src="https://avatars.githubusercontent.com/u/142400352?v=4">
+  <p class="site-author-name" itemprop="name">JoJoJoin</p>
+  <div class="site-description" itemprop="description">一个关于技术和生活的个人博客</div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">8</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://jojojoin.github.io/2026/04/16/Godot4%E2%80%942D%E5%86%B2%E5%88%BA%E6%8B%96%E5%B0%BE%E6%AE%8B%E5%BD%B1%E4%B8%8E%E8%B5%B7%E8%90%BD%E5%9C%B0%E7%B2%92%E5%AD%90%E7%89%B9%E6%95%88/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://avatars.githubusercontent.com/u/142400352?v=4">
+      <meta itemprop="name" content="JoJoJoin">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="JoJoJoin 的博客">
+      <meta itemprop="description" content="一个关于技术和生活的个人博客">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Godot4—2D冲刺拖尾残影与起落地粒子特效 | JoJoJoin 的博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Godot4—2D冲刺拖尾残影与起落地粒子特效
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-04-16 00:14:28 / 修改时间：00:17:47" itemprop="dateCreated datePublished" datetime="2026-04-16T00:14:28+08:00">2026-04-16</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">技术</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><blockquote>
+<p>在上一篇碰撞爆炸粒子特效的基础上，继续为方块角色添加 <strong>冲刺（Dash）+ 拖尾（Trail）+ 残影（Ghost）</strong> 和 <strong>起跳扬尘 + 落地冲击</strong> 两套视觉特效。全部通过 GDScript 代码实现，不依赖额外素材。</p>
+</blockquote>
+<hr>
+<h2 id="0-前置条件"><a href="#0-前置条件" class="headerlink" title="0. 前置条件"></a>0. 前置条件</h2><p>本文基于上一篇 <strong>《Godot4—2D碰撞爆炸粒子特效》</strong> 的项目继续开发。你需要：</p>
+<ul>
+<li>Godot 4.x 项目已搭建完成</li>
+<li><code>Player.gd</code> 脚本已实现基本移动、跳跃和碰撞爆炸逻辑</li>
+<li>场景包含 Player（RigidBody2D）、Target、Ground 等节点</li>
+</ul>
+<hr>
+<h2 id="一、冲刺-拖尾-残影系统"><a href="#一、冲刺-拖尾-残影系统" class="headerlink" title="一、冲刺 + 拖尾 + 残影系统"></a>一、冲刺 + 拖尾 + 残影系统</h2><h3 id="1-1-效果说明"><a href="#1-1-效果说明" class="headerlink" title="1.1 效果说明"></a>1.1 效果说明</h3><p>按下 Shift 时，方块朝当前移动方向高速冲刺，同时产生：</p>
+<table>
+<thead>
+<tr>
+<th>特效</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>拖尾</strong></td>
+<td>Line2D 跟随方块运动轨迹，头部不透明 → 尾部渐隐</td>
+</tr>
+<tr>
+<td><strong>残影</strong></td>
+<td>冲刺过程中每隔一小段时间生成半透明方块副本，逐渐缩小+透明后消失</td>
+</tr>
+</tbody></table>
+<h3 id="1-2-实现原理"><a href="#1-2-实现原理" class="headerlink" title="1.2 实现原理"></a>1.2 实现原理</h3><h4 id="冲刺（Dash）"><a href="#冲刺（Dash）" class="headerlink" title="冲刺（Dash）"></a>冲刺（Dash）</h4><p>冲刺的核心思路是：在一个短暂的时间窗口内（<code>dash_duration</code>），<strong>强制覆盖 RigidBody2D 的线速度</strong>为一个高速固定方向向量，跳过普通移动逻辑。冲刺结束后保留一部分残余速度，让手感更平滑。</p>
+<p>关键设计：</p>
+<ul>
+<li><strong>方向优先级</strong>：按键方向 &gt; 当前速度方向 &gt; 默认朝右</li>
+<li><strong>冷却机制</strong>：冲刺结束后进入冷却期（<code>dash_cooldown</code>），防止连续触发</li>
+<li><strong><code>_physics_process</code> 短路</strong>：冲刺期间 <code>return</code> 跳过普通输入处理，确保速度不被移动力覆盖</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">触发冲刺 → 记录方向 → 每帧强制 linear_velocity = 方向 × 速度</span><br><span class="line">                     → 同时更新拖尾 / 生成残影</span><br><span class="line">                     → dash_timer 归零后退出冲刺状态</span><br></pre></td></tr></table></figure>
+
+<h4 id="拖尾（Trail-—-Line2D）"><a href="#拖尾（Trail-—-Line2D）" class="headerlink" title="拖尾（Trail — Line2D）"></a>拖尾（Trail — Line2D）</h4><p>拖尾使用动态创建的 <strong>Line2D</strong> 节点实现，核心原理是维护一个<strong>位置点队列</strong>：</p>
+<ol>
+<li>冲刺中：每物理帧将角色当前 <code>global_position</code> 插入到 Line2D 的<strong>头部</strong>（index 0）</li>
+<li>限制最大点数（<code>trail_length</code>），超出则从尾部移除</li>
+<li>冲刺结束后：不再插入新点，每帧从尾部移除一个点，拖尾自然收缩消失</li>
+</ol>
+<p>通过 <strong>Gradient</strong> 实现头部不透明 → 尾部全透明的渐变效果。<code>top_level = true</code> 使 Line2D 在全局坐标系下绘制，不受父节点 Transform 影响。</p>
+<h4 id="残影（Ghost-—-ColorRect-Tween）"><a href="#残影（Ghost-—-ColorRect-Tween）" class="headerlink" title="残影（Ghost — ColorRect + Tween）"></a>残影（Ghost — ColorRect + Tween）</h4><p>残影的原理是在冲刺过程中，定时在当前位置生成一个与角色同尺寸的 <strong>ColorRect</strong> 节点，然后用 <strong>Tween</strong> 做淡出动画：</p>
+<ol>
+<li>每隔 <code>ghost_interval</code> 秒，在角色当前位置实例化一个 ColorRect</li>
+<li>设置 <code>top_level = true</code>，使其停留在生成时的全局位置（不跟随角色移动）</li>
+<li>用 Tween 并行驱动：<code>modulate.a → 0</code>（透明）+ <code>scale → 0.5</code>（缩小）</li>
+<li>动画结束后 <code>queue_free()</code> 自动销毁</li>
+</ol>
+<blockquote>
+<p><strong>为什么用 ColorRect 而不是 Sprite2D？</strong> 因为我们的角色本身就是纯色方块，用 ColorRect 零素材即可匹配。如果角色有贴图，可以替换为 Sprite2D 并赋相同 Texture。</p>
+</blockquote>
+<h3 id="1-3-添加-Input-Map"><a href="#1-3-添加-Input-Map" class="headerlink" title="1.3 添加 Input Map"></a>1.3 添加 Input Map</h3><p>打开 <code>项目 → 项目设置 → 输入映射</code>，添加：</p>
+<table>
+<thead>
+<tr>
+<th>动作名称</th>
+<th>按键</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>dash</code></td>
+<td>Shift</td>
+</tr>
+</tbody></table>
+<h3 id="1-4-代码实现"><a href="#1-4-代码实现" class="headerlink" title="1.4 代码实现"></a>1.4 代码实现</h3><h4 id="新增导出变量"><a href="#新增导出变量" class="headerlink" title="新增导出变量"></a>新增导出变量</h4><p>在脚本顶部的变量区域添加：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">## ---- 冲刺参数 ----</span><br><span class="line">@export var dash_speed: float = 1500.0       ## 冲刺速度</span><br><span class="line">@export var dash_duration: float = 0.15       ## 冲刺持续时间（秒）</span><br><span class="line">@export var dash_cooldown: float = 0.6        ## 冷却时间（秒）</span><br><span class="line"></span><br><span class="line">## ---- 拖尾参数 ----</span><br><span class="line">@export var trail_length: int = 20            ## 拖尾最大点数</span><br><span class="line">@export var trail_width: float = 30.0         ## 拖尾宽度</span><br><span class="line">@export var trail_color: Color = Color(0.3, 0.6, 1.0, 0.7)  ## 拖尾颜色</span><br><span class="line"></span><br><span class="line">## ---- 残影参数 ----</span><br><span class="line">@export var ghost_interval: float = 0.03      ## 残影生成间隔（秒）</span><br><span class="line">@export var ghost_fade_time: float = 0.3      ## 残影消失时间</span><br><span class="line">@export var ghost_color: Color = Color(0.4, 0.7, 1.0, 0.5)  ## 残影颜色</span><br></pre></td></tr></table></figure>
+
+<h4 id="新增内部变量"><a href="#新增内部变量" class="headerlink" title="新增内部变量"></a>新增内部变量</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">var is_dashing: bool = false</span><br><span class="line">var dash_timer: float = 0.0</span><br><span class="line">var dash_cooldown_timer: float = 0.0</span><br><span class="line">var dash_direction: Vector2 = Vector2.ZERO</span><br><span class="line">var ghost_spawn_timer: float = 0.0</span><br><span class="line">var trail_line: Line2D = null</span><br><span class="line">var trail_fade_tween: Tween = null</span><br></pre></td></tr></table></figure>
+
+<h4 id="在-ready-中初始化拖尾"><a href="#在-ready-中初始化拖尾" class="headerlink" title="在 _ready() 中初始化拖尾"></a>在 <code>_ready()</code> 中初始化拖尾</h4><p>在 <code>_ready()</code> 函数末尾添加：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"># 创建拖尾 Line2D</span><br><span class="line">trail_line = Line2D.new()</span><br><span class="line">trail_line.width = trail_width</span><br><span class="line">trail_line.default_color = trail_color</span><br><span class="line">trail_line.top_level = true          # 不跟随父节点旋转/缩放，使用全局坐标</span><br><span class="line">trail_line.begin_cap_mode = Line2D.LINE_CAP_ROUND</span><br><span class="line">trail_line.end_cap_mode = Line2D.LINE_CAP_ROUND</span><br><span class="line"></span><br><span class="line"># 拖尾渐变：头部不透明 → 尾部透明</span><br><span class="line">var gradient := Gradient.new()</span><br><span class="line">gradient.set_color(0, Color(trail_color.r, trail_color.g, trail_color.b, trail_color.a))</span><br><span class="line">gradient.set_color(1, Color(trail_color.r, trail_color.g, trail_color.b, 0.0))</span><br><span class="line">trail_line.gradient = gradient</span><br><span class="line"></span><br><span class="line">add_child(trail_line)</span><br></pre></td></tr></table></figure>
+
+<h4 id="修改-physics-process"><a href="#修改-physics-process" class="headerlink" title="修改 _physics_process()"></a>修改 <code>_physics_process()</code></h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">func _physics_process(delta: float) -&gt; void:</span><br><span class="line">    last_velocity = linear_velocity</span><br><span class="line"></span><br><span class="line">    # ---- 冷却计时 ----</span><br><span class="line">    if dash_cooldown_timer &gt; 0:</span><br><span class="line">        dash_cooldown_timer -= delta</span><br><span class="line"></span><br><span class="line">    # ---- 冲刺中 ----</span><br><span class="line">    if is_dashing:</span><br><span class="line">        dash_timer -= delta</span><br><span class="line">        ghost_spawn_timer -= delta</span><br><span class="line"></span><br><span class="line">        # 冲刺期间强制设定速度方向</span><br><span class="line">        linear_velocity = dash_direction * dash_speed</span><br><span class="line"></span><br><span class="line">        # 生成残影</span><br><span class="line">        if ghost_spawn_timer &lt;= 0:</span><br><span class="line">            ghost_spawn_timer = ghost_interval</span><br><span class="line">            _spawn_ghost()</span><br><span class="line"></span><br><span class="line">        # 冲刺结束</span><br><span class="line">        if dash_timer &lt;= 0:</span><br><span class="line">            is_dashing = false</span><br><span class="line">            # 冲刺结束后保留一部分速度，手感更好</span><br><span class="line">            linear_velocity = dash_direction * dash_speed * 0.3</span><br><span class="line"></span><br><span class="line">        _update_trail()</span><br><span class="line">        return   # 冲刺中跳过普通移动逻辑</span><br><span class="line"></span><br><span class="line">    # ---- 普通移动（原有逻辑）----</span><br><span class="line">    var dir := 0.0</span><br><span class="line">    if Input.is_action_pressed(&quot;ui_left&quot;):</span><br><span class="line">        dir -= 1.0</span><br><span class="line">    if Input.is_action_pressed(&quot;ui_right&quot;):</span><br><span class="line">        dir += 1.0</span><br><span class="line"></span><br><span class="line">    apply_central_force(Vector2(dir * move_force, 0))</span><br><span class="line"></span><br><span class="line">    if Input.is_action_just_pressed(&quot;ui_accept&quot;) and on_ground:</span><br><span class="line">        apply_central_impulse(Vector2(0, jump_impulse))</span><br><span class="line">        on_ground = false</span><br><span class="line"></span><br><span class="line">    # ---- 触发冲刺 ----</span><br><span class="line">    if Input.is_action_just_pressed(&quot;dash&quot;) and dash_cooldown_timer &lt;= 0:</span><br><span class="line">        _start_dash(dir)</span><br><span class="line"></span><br><span class="line">    _update_trail()</span><br></pre></td></tr></table></figure>
+
+<h4 id="冲刺核心函数"><a href="#冲刺核心函数" class="headerlink" title="冲刺核心函数"></a>冲刺核心函数</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">func _start_dash(horizontal_dir: float) -&gt; void:</span><br><span class="line">    # 确定冲刺方向：优先用按键方向，没按就用当前速度方向，都没有就朝右</span><br><span class="line">    if horizontal_dir != 0:</span><br><span class="line">        dash_direction = Vector2(horizontal_dir, 0).normalized()</span><br><span class="line">    elif linear_velocity.length() &gt; 10:</span><br><span class="line">        dash_direction = linear_velocity.normalized()</span><br><span class="line">    else:</span><br><span class="line">        dash_direction = Vector2.RIGHT</span><br><span class="line"></span><br><span class="line">    is_dashing = true</span><br><span class="line">    dash_timer = dash_duration</span><br><span class="line">    dash_cooldown_timer = dash_cooldown</span><br><span class="line">    ghost_spawn_timer = 0.0  # 立刻生成第一个残影</span><br><span class="line"></span><br><span class="line">    # 清除拖尾旧数据，开始新的拖尾</span><br><span class="line">    trail_line.clear_points()</span><br><span class="line">    if trail_fade_tween and trail_fade_tween.is_valid():</span><br><span class="line">        trail_fade_tween.kill()</span><br><span class="line">    trail_line.modulate.a = 1.0</span><br></pre></td></tr></table></figure>
+
+<h4 id="拖尾更新"><a href="#拖尾更新" class="headerlink" title="拖尾更新"></a>拖尾更新</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">func _update_trail() -&gt; void:</span><br><span class="line">    if is_dashing:</span><br><span class="line">        # 冲刺中：不断往头部插入当前位置</span><br><span class="line">        trail_line.add_point(global_position, 0)</span><br><span class="line">        # 限制最大点数</span><br><span class="line">        while trail_line.get_point_count() &gt; trail_length:</span><br><span class="line">            trail_line.remove_point(trail_line.get_point_count() - 1)</span><br><span class="line">    else:</span><br><span class="line">        # 非冲刺：逐渐移除尾部的点（自然收缩）</span><br><span class="line">        if trail_line.get_point_count() &gt; 0:</span><br><span class="line">            trail_line.remove_point(trail_line.get_point_count() - 1)</span><br></pre></td></tr></table></figure>
+
+<h4 id="残影生成"><a href="#残影生成" class="headerlink" title="残影生成"></a>残影生成</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">func _spawn_ghost() -&gt; void:</span><br><span class="line">    var ghost := ColorRect.new()</span><br><span class="line">    ghost.size = Vector2(64, 64)                   # 和方块同尺寸</span><br><span class="line">    ghost.position = global_position - Vector2(32, 32)  # 居中</span><br><span class="line">    ghost.color = ghost_color</span><br><span class="line">    ghost.top_level = true</span><br><span class="line">    ghost.z_index = z_index - 1                     # 渲染在本体后面</span><br><span class="line">    ghost.pivot_offset = Vector2(32, 32)            # 从中心缩放</span><br><span class="line">    ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE</span><br><span class="line">    get_parent().add_child(ghost)</span><br><span class="line"></span><br><span class="line">    # 淡出动画：缩小 + 透明</span><br><span class="line">    var tween := ghost.create_tween()</span><br><span class="line">    tween.set_parallel(true)</span><br><span class="line">    tween.tween_property(ghost, &quot;modulate:a&quot;, 0.0, ghost_fade_time)</span><br><span class="line">    tween.tween_property(ghost, &quot;scale&quot;, Vector2(0.5, 0.5), ghost_fade_time)</span><br><span class="line">    tween.chain().tween_callback(ghost.queue_free)</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-5-原理图解"><a href="#1-5-原理图解" class="headerlink" title="1.5 原理图解"></a>1.5 原理图解</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">帧 1:   [Player●]─────────────────────────</span><br><span class="line">帧 2:   [Ghost○] [Player●]────────────────  ← 残影留在帧1位置</span><br><span class="line">帧 3:   [Ghost○] [Ghost○] [Player●]───────  ← Line2D 连接所有位置点</span><br><span class="line">帧 4:   [Ghost◌] [Ghost○] [Ghost○] [Player●]  ← 早期残影开始淡出</span><br><span class="line">         ↑缩小+透明                  ↑头部不透明</span><br><span class="line"></span><br><span class="line">Line2D Trail:  ●━━━━━━━━━━━━━━━━━━○</span><br><span class="line">               头部(不透明)     尾部(透明)</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="二、起跳扬尘-落地冲击特效"><a href="#二、起跳扬尘-落地冲击特效" class="headerlink" title="二、起跳扬尘 + 落地冲击特效"></a>二、起跳扬尘 + 落地冲击特效</h2><h3 id="2-1-效果说明"><a href="#2-1-效果说明" class="headerlink" title="2.1 效果说明"></a>2.1 效果说明</h3><table>
+<thead>
+<tr>
+<th>特效</th>
+<th>触发时机</th>
+<th>视觉效果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>起跳扬尘</strong></td>
+<td>按跳跃键起跳瞬间</td>
+<td>脚底向两侧喷出一小团灰色烟尘</td>
+</tr>
+<tr>
+<td><strong>落地冲击</strong></td>
+<td>从空中落回地面瞬间</td>
+<td>脚底向两侧扩散的扬尘，下落越快粒子越多越猛</td>
+</tr>
+</tbody></table>
+<h3 id="2-2-实现原理"><a href="#2-2-实现原理" class="headerlink" title="2.2 实现原理"></a>2.2 实现原理</h3><h4 id="起跳扬尘"><a href="#起跳扬尘" class="headerlink" title="起跳扬尘"></a>起跳扬尘</h4><p>起跳是一个瞬时事件，触发逻辑很简单：检测到跳跃按键按下且角色在地面上时，在脚底位置发射一次粒子。</p>
+<p>使用 <code>GPUParticles2D</code> + <code>One Shot</code> 模式：</p>
+<ul>
+<li>所有粒子在同一帧喷出（<code>Explosiveness = 1.0</code>）</li>
+<li>方向朝上（<code>Direction = (0, -1, 0)</code>），扩散角 60°，形成 V 字形</li>
+<li>粒子受重力影响自然下落</li>
+<li>通过 Color Ramp 实现灰色 → 透明的淡出</li>
+</ul>
+<h4 id="落地冲击（动态强度缩放）"><a href="#落地冲击（动态强度缩放）" class="headerlink" title="落地冲击（动态强度缩放）"></a>落地冲击（动态强度缩放）</h4><p>落地检测的核心在于<strong>状态变化</strong>：角色从”空中”变为”地面”的那一帧就是落地瞬间。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">空中 (on_ground = false)  →  碰到地面 (body_entered)  →  落地！</span><br></pre></td></tr></table></figure>
+
+<p>动态强度缩放是这套特效的亮点——跳得越高，落地时下落速度越大，粒子效果越剧烈：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">var intensity := clampf(fall_speed / 800.0, 0.2, 1.0)</span><br></pre></td></tr></table></figure>
+
+<p>intensity 影响范围：</p>
+<table>
+<thead>
+<tr>
+<th>属性</th>
+<th align="center">弱落地 (intensity&#x3D;0.2)</th>
+<th align="center">强落地 (intensity&#x3D;1.0)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>粒子数量比例</td>
+<td align="center">30%</td>
+<td align="center">100%</td>
+</tr>
+<tr>
+<td>粒子存活时间</td>
+<td align="center">0.3s</td>
+<td align="center">0.6s</td>
+</tr>
+<tr>
+<td>初始速度范围</td>
+<td align="center">15~50</td>
+<td align="center">60~150</td>
+</tr>
+</tbody></table>
+<p>这与碰撞爆炸中的 intensity 设计思路一致——用 <code>lerp()</code> 在最小值和最大值之间根据强度插值。</p>
+<h3 id="2-3-创建起跳粒子节点（JumpDust）"><a href="#2-3-创建起跳粒子节点（JumpDust）" class="headerlink" title="2.3 创建起跳粒子节点（JumpDust）"></a>2.3 创建起跳粒子节点（JumpDust）</h3><ol>
+<li>在 <strong>Main</strong> 场景中添加 <code>GPUParticles2D</code>，重命名为 <strong><code>JumpDust</code></strong></li>
+<li>Inspector 基本属性：</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>属性</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Emitting</td>
+<td><code>false</code></td>
+<td>不自动发射，由代码控制</td>
+</tr>
+<tr>
+<td>Amount</td>
+<td><code>12</code></td>
+<td>粒子数量</td>
+</tr>
+<tr>
+<td>One Shot</td>
+<td><code>✓ 勾选</code></td>
+<td>只发射一次</td>
+</tr>
+<tr>
+<td>Explosiveness</td>
+<td><code>1.0</code></td>
+<td>所有粒子同时喷出</td>
+</tr>
+<tr>
+<td>Lifetime</td>
+<td><code>0.4</code></td>
+<td>粒子存活 0.4 秒</td>
+</tr>
+</tbody></table>
+<ol start="3">
+<li><strong>Process Material</strong> → <strong>New ParticleProcessMaterial</strong>：</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>属性位置</th>
+<th>属性</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Particle Flags</td>
+<td>Disable Z</td>
+<td><code>✓ 勾选</code></td>
+<td>2D 模式</td>
+</tr>
+<tr>
+<td>Direction</td>
+<td>Direction</td>
+<td><code>(0, -1, 0)</code></td>
+<td>主要向上喷</td>
+</tr>
+<tr>
+<td>Direction</td>
+<td>Spread</td>
+<td><code>60</code></td>
+<td>V 字形扩散</td>
+</tr>
+<tr>
+<td>Initial Velocity</td>
+<td>Velocity Min</td>
+<td><code>30</code></td>
+<td></td>
+</tr>
+<tr>
+<td>Initial Velocity</td>
+<td>Velocity Max</td>
+<td><code>80</code></td>
+<td></td>
+</tr>
+<tr>
+<td>Gravity</td>
+<td>Gravity</td>
+<td><code>(0, 200, 0)</code></td>
+<td>粒子受重力下落</td>
+</tr>
+<tr>
+<td>Scale</td>
+<td>Scale Min</td>
+<td><code>3.0</code></td>
+<td></td>
+</tr>
+<tr>
+<td>Scale</td>
+<td>Scale Max</td>
+<td><code>6.0</code></td>
+<td></td>
+</tr>
+</tbody></table>
+<ol start="4">
+<li>颜色渐变（Color Ramp）：<ul>
+<li>左侧色标：<code>#999999</code>，Alpha ≈ 180</li>
+<li>右侧色标：<code>#666666</code>，Alpha &#x3D; 0</li>
+</ul>
+</li>
+</ol>
+<h3 id="2-4-创建落地粒子节点（LandDust）"><a href="#2-4-创建落地粒子节点（LandDust）" class="headerlink" title="2.4 创建落地粒子节点（LandDust）"></a>2.4 创建落地粒子节点（LandDust）</h3><ol>
+<li>复制 <code>JumpDust</code>（<code>Ctrl+D</code>），重命名为 <strong><code>LandDust</code></strong></li>
+<li>修改属性：</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>属性</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Amount</td>
+<td><code>20</code></td>
+</tr>
+<tr>
+<td>Lifetime</td>
+<td><code>0.5</code></td>
+</tr>
+</tbody></table>
+<ol start="3">
+<li>Process Material 修改：</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>属性位置</th>
+<th>属性</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Direction</td>
+<td>Direction</td>
+<td><code>(0, 0, 0)</code></td>
+<td>无主方向</td>
+</tr>
+<tr>
+<td>Direction</td>
+<td>Spread</td>
+<td><code>180</code></td>
+<td>全方向散射</td>
+</tr>
+<tr>
+<td>Initial Velocity</td>
+<td>Velocity Min</td>
+<td><code>20</code></td>
+<td>代码会动态调整</td>
+</tr>
+<tr>
+<td>Initial Velocity</td>
+<td>Velocity Max</td>
+<td><code>100</code></td>
+<td>代码会动态调整</td>
+</tr>
+<tr>
+<td>Gravity</td>
+<td>Gravity</td>
+<td><code>(0, 100, 0)</code></td>
+<td>较弱重力</td>
+</tr>
+<tr>
+<td>Scale</td>
+<td>Scale Min</td>
+<td><code>4.0</code></td>
+<td></td>
+</tr>
+<tr>
+<td>Scale</td>
+<td>Scale Max</td>
+<td><code>10.0</code></td>
+<td></td>
+</tr>
+</tbody></table>
+<h3 id="2-5-代码实现"><a href="#2-5-代码实现" class="headerlink" title="2.5 代码实现"></a>2.5 代码实现</h3><h4 id="新增导出变量-1"><a href="#新增导出变量-1" class="headerlink" title="新增导出变量"></a>新增导出变量</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">## ---- 起跳/落地特效 ----</span><br><span class="line">@export var jump_dust: GPUParticles2D        ## 起跳扬尘粒子</span><br><span class="line">@export var land_dust: GPUParticles2D        ## 落地冲击粒子</span><br><span class="line">@export var min_land_speed: float = 200.0    ## 触发落地特效的最小下落速度</span><br></pre></td></tr></table></figure>
+
+<h4 id="在-Inspector-中绑定节点"><a href="#在-Inspector-中绑定节点" class="headerlink" title="在 Inspector 中绑定节点"></a>在 Inspector 中绑定节点</h4><p>选中 Player → Inspector 中将 <code>JumpDust</code> 和 <code>LandDust</code> 分别拖入对应属性。</p>
+<h4 id="修改跳跃逻辑（触发起跳特效）"><a href="#修改跳跃逻辑（触发起跳特效）" class="headerlink" title="修改跳跃逻辑（触发起跳特效）"></a>修改跳跃逻辑（触发起跳特效）</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">if Input.is_action_just_pressed(&quot;ui_accept&quot;) and on_ground:</span><br><span class="line">    apply_central_impulse(Vector2(0, jump_impulse))</span><br><span class="line">    on_ground = false</span><br><span class="line">    _trigger_jump_dust()    # ← 新增</span><br></pre></td></tr></table></figure>
+
+<h4 id="修改-on-body-entered-（触发落地特效）"><a href="#修改-on-body-entered-（触发落地特效）" class="headerlink" title="修改 _on_body_entered()（触发落地特效）"></a>修改 <code>_on_body_entered()</code>（触发落地特效）</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">func _on_body_entered(body: Node) -&gt; void:</span><br><span class="line">    var was_in_air := not on_ground       # 记录是否从空中到达</span><br><span class="line">    on_ground = true</span><br><span class="line"></span><br><span class="line">    # 落地特效</span><br><span class="line">    if was_in_air:</span><br><span class="line">        var fall_speed := absf(last_velocity.y)</span><br><span class="line">        if fall_speed &gt;= min_land_speed:</span><br><span class="line">            _trigger_land_dust(fall_speed)</span><br><span class="line"></span><br><span class="line">    if body.name == &quot;Target&quot; and explosion_effects.size() &gt; 0:</span><br><span class="line">        # ... 原有的碰撞爆炸逻辑不变 ...</span><br></pre></td></tr></table></figure>
+
+<h4 id="特效触发函数"><a href="#特效触发函数" class="headerlink" title="特效触发函数"></a>特效触发函数</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">## 起跳扬尘</span><br><span class="line">func _trigger_jump_dust() -&gt; void:</span><br><span class="line">    if not jump_dust:</span><br><span class="line">        return</span><br><span class="line">    jump_dust.global_position = global_position + Vector2(0, 32)</span><br><span class="line">    jump_dust.restart()</span><br><span class="line">    jump_dust.emitting = true</span><br><span class="line"></span><br><span class="line">## 落地冲击</span><br><span class="line">func _trigger_land_dust(fall_speed: float) -&gt; void:</span><br><span class="line">    if not land_dust:</span><br><span class="line">        return</span><br><span class="line">    land_dust.global_position = global_position + Vector2(0, 32)</span><br><span class="line"></span><br><span class="line">    # 根据下落速度计算强度 (0.2 ~ 1.0)</span><br><span class="line">    var intensity := clampf(fall_speed / 800.0, 0.2, 1.0)</span><br><span class="line"></span><br><span class="line">    # 动态调整粒子参数</span><br><span class="line">    land_dust.amount_ratio = lerp(0.3, 1.0, intensity)</span><br><span class="line">    land_dust.lifetime = lerp(0.3, 0.6, intensity)</span><br><span class="line"></span><br><span class="line">    var mat := land_dust.process_material as ParticleProcessMaterial</span><br><span class="line">    mat.initial_velocity_min = lerp(15.0, 60.0, intensity)</span><br><span class="line">    mat.initial_velocity_max = lerp(50.0, 150.0, intensity)</span><br><span class="line"></span><br><span class="line">    land_dust.restart()</span><br><span class="line">    land_dust.emitting = true</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="三、完整代码"><a href="#三、完整代码" class="headerlink" title="三、完整代码"></a>三、完整代码</h2><p>将碰撞爆炸 + 冲刺拖尾残影 + 起跳落地特效全部合并后的 <code>Player.gd</code>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br></pre></td><td class="code"><pre><span class="line">extends RigidBody2D</span><br><span class="line"></span><br><span class="line">## 水平移动力</span><br><span class="line">@export var move_force: float = 800.0</span><br><span class="line">## 跳跃冲量</span><br><span class="line">@export var jump_impulse: float = -1000.0</span><br><span class="line">## 爆炸粒子节点（从编辑器拖入）</span><br><span class="line">@export var explosion_effects: Array[GPUParticles2D] = []</span><br><span class="line">## 触发爆炸的最小速度阈值</span><br><span class="line">@export var min_impact_speed: float = 50.0</span><br><span class="line"></span><br><span class="line">## ---- 冲刺参数 ----</span><br><span class="line">@export var dash_speed: float = 1500.0</span><br><span class="line">@export var dash_duration: float = 0.15</span><br><span class="line">@export var dash_cooldown: float = 0.6</span><br><span class="line"></span><br><span class="line">## ---- 拖尾参数 ----</span><br><span class="line">@export var trail_length: int = 20</span><br><span class="line">@export var trail_width: float = 30.0</span><br><span class="line">@export var trail_color: Color = Color(0.3, 0.6, 1.0, 0.7)</span><br><span class="line"></span><br><span class="line">## ---- 残影参数 ----</span><br><span class="line">@export var ghost_interval: float = 0.03</span><br><span class="line">@export var ghost_fade_time: float = 0.3</span><br><span class="line">@export var ghost_color: Color = Color(0.4, 0.7, 1.0, 0.5)</span><br><span class="line"></span><br><span class="line">## ---- 起跳/落地特效 ----</span><br><span class="line">@export var jump_dust: GPUParticles2D</span><br><span class="line">@export var land_dust: GPUParticles2D</span><br><span class="line">@export var min_land_speed: float = 200.0</span><br><span class="line"></span><br><span class="line">var on_ground: bool = false</span><br><span class="line">var last_velocity := Vector2.ZERO</span><br><span class="line">var effect_defaults: Array[Dictionary] = []</span><br><span class="line"></span><br><span class="line">var is_dashing: bool = false</span><br><span class="line">var dash_timer: float = 0.0</span><br><span class="line">var dash_cooldown_timer: float = 0.0</span><br><span class="line">var dash_direction: Vector2 = Vector2.ZERO</span><br><span class="line">var ghost_spawn_timer: float = 0.0</span><br><span class="line">var trail_line: Line2D = null</span><br><span class="line">var trail_fade_tween: Tween = null</span><br><span class="line"></span><br><span class="line">func _ready() -&gt; void:</span><br><span class="line">    body_entered.connect(_on_body_entered)</span><br><span class="line">    body_exited.connect(_on_body_exited)</span><br><span class="line">    for effect in explosion_effects:</span><br><span class="line">        var mat := effect.process_material as ParticleProcessMaterial</span><br><span class="line">        effect_defaults.append(&#123;</span><br><span class="line">            &quot;lifetime&quot;: effect.lifetime,</span><br><span class="line">            &quot;vel_min&quot;: mat.initial_velocity_min,</span><br><span class="line">            &quot;vel_max&quot;: mat.initial_velocity_max,</span><br><span class="line">        &#125;)</span><br><span class="line"></span><br><span class="line">    # 创建拖尾 Line2D</span><br><span class="line">    trail_line = Line2D.new()</span><br><span class="line">    trail_line.width = trail_width</span><br><span class="line">    trail_line.default_color = trail_color</span><br><span class="line">    trail_line.top_level = true</span><br><span class="line">    trail_line.begin_cap_mode = Line2D.LINE_CAP_ROUND</span><br><span class="line">    trail_line.end_cap_mode = Line2D.LINE_CAP_ROUND</span><br><span class="line">    var gradient := Gradient.new()</span><br><span class="line">    gradient.set_color(0, Color(trail_color.r, trail_color.g, trail_color.b, trail_color.a))</span><br><span class="line">    gradient.set_color(1, Color(trail_color.r, trail_color.g, trail_color.b, 0.0))</span><br><span class="line">    trail_line.gradient = gradient</span><br><span class="line">    add_child(trail_line)</span><br><span class="line"></span><br><span class="line">func _physics_process(delta: float) -&gt; void:</span><br><span class="line">    last_velocity = linear_velocity</span><br><span class="line"></span><br><span class="line">    if dash_cooldown_timer &gt; 0:</span><br><span class="line">        dash_cooldown_timer -= delta</span><br><span class="line"></span><br><span class="line">    if is_dashing:</span><br><span class="line">        dash_timer -= delta</span><br><span class="line">        ghost_spawn_timer -= delta</span><br><span class="line">        linear_velocity = dash_direction * dash_speed</span><br><span class="line">        if ghost_spawn_timer &lt;= 0:</span><br><span class="line">            ghost_spawn_timer = ghost_interval</span><br><span class="line">            _spawn_ghost()</span><br><span class="line">        if dash_timer &lt;= 0:</span><br><span class="line">            is_dashing = false</span><br><span class="line">            linear_velocity = dash_direction * dash_speed * 0.3</span><br><span class="line">        _update_trail()</span><br><span class="line">        return</span><br><span class="line"></span><br><span class="line">    var dir := 0.0</span><br><span class="line">    if Input.is_action_pressed(&quot;ui_left&quot;):</span><br><span class="line">        dir -= 1.0</span><br><span class="line">    if Input.is_action_pressed(&quot;ui_right&quot;):</span><br><span class="line">        dir += 1.0</span><br><span class="line"></span><br><span class="line">    apply_central_force(Vector2(dir * move_force, 0))</span><br><span class="line"></span><br><span class="line">    if Input.is_action_just_pressed(&quot;ui_accept&quot;) and on_ground:</span><br><span class="line">        apply_central_impulse(Vector2(0, jump_impulse))</span><br><span class="line">        on_ground = false</span><br><span class="line">        _trigger_jump_dust()</span><br><span class="line"></span><br><span class="line">    if Input.is_action_just_pressed(&quot;dash&quot;) and dash_cooldown_timer &lt;= 0:</span><br><span class="line">        _start_dash(dir)</span><br><span class="line"></span><br><span class="line">    _update_trail()</span><br><span class="line"></span><br><span class="line">func _start_dash(horizontal_dir: float) -&gt; void:</span><br><span class="line">    if horizontal_dir != 0:</span><br><span class="line">        dash_direction = Vector2(horizontal_dir, 0).normalized()</span><br><span class="line">    elif linear_velocity.length() &gt; 10:</span><br><span class="line">        dash_direction = linear_velocity.normalized()</span><br><span class="line">    else:</span><br><span class="line">        dash_direction = Vector2.RIGHT</span><br><span class="line"></span><br><span class="line">    is_dashing = true</span><br><span class="line">    dash_timer = dash_duration</span><br><span class="line">    dash_cooldown_timer = dash_cooldown</span><br><span class="line">    ghost_spawn_timer = 0.0</span><br><span class="line">    trail_line.clear_points()</span><br><span class="line">    if trail_fade_tween and trail_fade_tween.is_valid():</span><br><span class="line">        trail_fade_tween.kill()</span><br><span class="line">    trail_line.modulate.a = 1.0</span><br><span class="line"></span><br><span class="line">func _update_trail() -&gt; void:</span><br><span class="line">    if is_dashing:</span><br><span class="line">        trail_line.add_point(global_position, 0)</span><br><span class="line">        while trail_line.get_point_count() &gt; trail_length:</span><br><span class="line">            trail_line.remove_point(trail_line.get_point_count() - 1)</span><br><span class="line">    else:</span><br><span class="line">        if trail_line.get_point_count() &gt; 0:</span><br><span class="line">            trail_line.remove_point(trail_line.get_point_count() - 1)</span><br><span class="line"></span><br><span class="line">func _spawn_ghost() -&gt; void:</span><br><span class="line">    var ghost := ColorRect.new()</span><br><span class="line">    ghost.size = Vector2(64, 64)</span><br><span class="line">    ghost.position = global_position - Vector2(32, 32)</span><br><span class="line">    ghost.color = ghost_color</span><br><span class="line">    ghost.top_level = true</span><br><span class="line">    ghost.z_index = z_index - 1</span><br><span class="line">    ghost.pivot_offset = Vector2(32, 32)</span><br><span class="line">    ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE</span><br><span class="line">    get_parent().add_child(ghost)</span><br><span class="line"></span><br><span class="line">    var tween := ghost.create_tween()</span><br><span class="line">    tween.set_parallel(true)</span><br><span class="line">    tween.tween_property(ghost, &quot;modulate:a&quot;, 0.0, ghost_fade_time)</span><br><span class="line">    tween.tween_property(ghost, &quot;scale&quot;, Vector2(0.5, 0.5), ghost_fade_time)</span><br><span class="line">    tween.chain().tween_callback(ghost.queue_free)</span><br><span class="line"></span><br><span class="line">func _on_body_entered(body: Node) -&gt; void:</span><br><span class="line">    var was_in_air := not on_ground</span><br><span class="line">    on_ground = true</span><br><span class="line"></span><br><span class="line">    # 落地特效</span><br><span class="line">    if was_in_air:</span><br><span class="line">        var fall_speed := absf(last_velocity.y)</span><br><span class="line">        if fall_speed &gt;= min_land_speed:</span><br><span class="line">            _trigger_land_dust(fall_speed)</span><br><span class="line"></span><br><span class="line">    if body.name == &quot;Target&quot; and explosion_effects.size() &gt; 0:</span><br><span class="line">        var impact_speed := last_velocity.length()</span><br><span class="line">        print(&quot;碰到 Target，碰撞前速度: %.1f&quot; % impact_speed)</span><br><span class="line">        if impact_speed &gt;= min_impact_speed:</span><br><span class="line">            var target_body := body as RigidBody2D</span><br><span class="line">            if target_body:</span><br><span class="line">                var knock_dir := (target_body.global_position - global_position).normalized()</span><br><span class="line">                target_body.apply_central_impulse(knock_dir * impact_speed * 1.5)</span><br><span class="line">            _trigger_explosion(impact_speed)</span><br><span class="line"></span><br><span class="line">func _on_body_exited(_body: Node) -&gt; void:</span><br><span class="line">    if get_contact_count() == 0:</span><br><span class="line">        on_ground = false</span><br><span class="line"></span><br><span class="line">func _trigger_explosion(impact_speed: float) -&gt; void:</span><br><span class="line">    var target := get_node(&quot;../Target&quot;) as Node2D</span><br><span class="line">    var hit_pos := (global_position + target.global_position) / 2.0</span><br><span class="line">    var intensity := clampf(impact_speed / 600.0, 0.2, 1.0)</span><br><span class="line"></span><br><span class="line">    for effect_index in range(explosion_effects.size()):</span><br><span class="line">        var effect = explosion_effects[effect_index]</span><br><span class="line">        effect.global_position = hit_pos</span><br><span class="line">        effect.amount_ratio = lerp(0.15, 1.0, intensity)</span><br><span class="line">        var defaults = effect_defaults[effect_index]</span><br><span class="line">        effect.lifetime = lerp(defaults[&quot;lifetime&quot;] * 0.5, defaults[&quot;lifetime&quot;], intensity)</span><br><span class="line">        var mat := effect.process_material as ParticleProcessMaterial</span><br><span class="line">        mat.initial_velocity_min = lerp(defaults[&quot;vel_min&quot;] * 0.3, defaults[&quot;vel_min&quot;], intensity)</span><br><span class="line">        mat.initial_velocity_max = lerp(defaults[&quot;vel_max&quot;] * 0.3, defaults[&quot;vel_max&quot;], intensity)</span><br><span class="line">        effect.restart()</span><br><span class="line">        effect.emitting = true</span><br><span class="line"></span><br><span class="line">    print(&quot;💥 Impact speed: %.1f | Intensity: %.0f%%&quot; % [impact_speed, intensity * 100])</span><br><span class="line"></span><br><span class="line">    var sfx := get_node(&quot;../HitSound&quot;) as AudioStreamPlayer2D</span><br><span class="line">    sfx.pitch_scale = lerp(1.2, 0.8, intensity)</span><br><span class="line">    sfx.play()</span><br><span class="line"></span><br><span class="line">    var cam := get_node(&quot;Camera2D&quot;) as Camera2D</span><br><span class="line">    var shake_strength := intensity * 10.0</span><br><span class="line">    var tween := create_tween()</span><br><span class="line">    tween.tween_property(cam, &quot;offset&quot;, Vector2(randf_range(-1,1), randf_range(-1,1)) * shake_strength, 0.05)</span><br><span class="line">    tween.tween_property(cam, &quot;offset&quot;, Vector2.ZERO, 0.15)</span><br><span class="line"></span><br><span class="line">func _trigger_jump_dust() -&gt; void:</span><br><span class="line">    if not jump_dust:</span><br><span class="line">        return</span><br><span class="line">    jump_dust.global_position = global_position + Vector2(0, 32)</span><br><span class="line">    jump_dust.restart()</span><br><span class="line">    jump_dust.emitting = true</span><br><span class="line"></span><br><span class="line">func _trigger_land_dust(fall_speed: float) -&gt; void:</span><br><span class="line">    if not land_dust:</span><br><span class="line">        return</span><br><span class="line">    land_dust.global_position = global_position + Vector2(0, 32)</span><br><span class="line">    var intensity := clampf(fall_speed / 800.0, 0.2, 1.0)</span><br><span class="line">    land_dust.amount_ratio = lerp(0.3, 1.0, intensity)</span><br><span class="line">    land_dust.lifetime = lerp(0.3, 0.6, intensity)</span><br><span class="line">    var mat := land_dust.process_material as ParticleProcessMaterial</span><br><span class="line">    mat.initial_velocity_min = lerp(15.0, 60.0, intensity)</span><br><span class="line">    mat.initial_velocity_max = lerp(50.0, 150.0, intensity)</span><br><span class="line">    land_dust.restart()</span><br><span class="line">    land_dust.emitting = true</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="四、最终场景树"><a href="#四、最终场景树" class="headerlink" title="四、最终场景树"></a>四、最终场景树</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">Main (Node2D)</span><br><span class="line">├── Ground (StaticBody2D)</span><br><span class="line">│   ├── CollisionShape2D</span><br><span class="line">│   └── ColorRect</span><br><span class="line">├── Target (RigidBody2D)</span><br><span class="line">│   ├── CollisionShape2D</span><br><span class="line">│   └── ColorRect</span><br><span class="line">├── Player (RigidBody2D)          ← 附加 Player.gd</span><br><span class="line">│   ├── CollisionShape2D</span><br><span class="line">│   ├── ColorRect</span><br><span class="line">│   ├── Camera2D</span><br><span class="line">│   └── [Line2D]                  ← 代码动态创建的拖尾</span><br><span class="line">├── ExplosionEffect (GPUParticles2D)</span><br><span class="line">├── SparkEffect (GPUParticles2D)</span><br><span class="line">├── SmokeEffect (GPUParticles2D)</span><br><span class="line">├── JumpDust (GPUParticles2D)     ← 新增：起跳扬尘</span><br><span class="line">├── LandDust (GPUParticles2D)     ← 新增：落地冲击</span><br><span class="line">└── HitSound (AudioStreamPlayer2D)</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="五、调参参考"><a href="#五、调参参考" class="headerlink" title="五、调参参考"></a>五、调参参考</h2><h3 id="冲刺-拖尾-残影"><a href="#冲刺-拖尾-残影" class="headerlink" title="冲刺 &amp; 拖尾 &amp; 残影"></a>冲刺 &amp; 拖尾 &amp; 残影</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>效果</th>
+<th>推荐范围</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>dash_speed</code></td>
+<td>越大冲得越远</td>
+<td>800 ~ 2500</td>
+</tr>
+<tr>
+<td><code>dash_duration</code></td>
+<td>越长冲刺距离越远</td>
+<td>0.08 ~ 0.25</td>
+</tr>
+<tr>
+<td><code>trail_width</code></td>
+<td>拖尾粗细</td>
+<td>10 ~ 60</td>
+</tr>
+<tr>
+<td><code>trail_color</code></td>
+<td>改成红色就是火焰风格</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>ghost_interval</code></td>
+<td>越小残影越密集</td>
+<td>0.02 ~ 0.06</td>
+</tr>
+<tr>
+<td><code>ghost_fade_time</code></td>
+<td>残影存留时间</td>
+<td>0.15 ~ 0.5</td>
+</tr>
+</tbody></table>
+<h3 id="起跳-落地"><a href="#起跳-落地" class="headerlink" title="起跳 &amp; 落地"></a>起跳 &amp; 落地</h3><table>
+<thead>
+<tr>
+<th>你觉得…</th>
+<th>调整方法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>烟尘太少&#x2F;太多</td>
+<td>修改节点的 <code>Amount</code> 属性</td>
+</tr>
+<tr>
+<td>烟尘飞太远</td>
+<td>降低 <code>Initial Velocity Max</code></td>
+</tr>
+<tr>
+<td>烟尘消失太快</td>
+<td>增大 <code>Lifetime</code></td>
+</tr>
+<tr>
+<td>落地特效不明显</td>
+<td>降低 <code>min_land_speed</code>（如 100）</td>
+</tr>
+<tr>
+<td>落地特效总是最大强度</td>
+<td>增大除法分母（800 → 1200）</td>
+</tr>
+<tr>
+<td>粒子太大&#x2F;太小</td>
+<td>调整 <code>Scale Min</code> &#x2F; <code>Scale Max</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="六、进阶玩法"><a href="#六、进阶玩法" class="headerlink" title="六、进阶玩法"></a>六、进阶玩法</h2><ul>
+<li><strong>冲刺 + 爆炸联动</strong>：在 <code>_start_dash</code> 里加屏幕震动，冲刺撞击 Target 时额外加伤</li>
+<li><strong>空中冲刺</strong>：去掉 <code>on_ground</code> 限制，但限制空中只能冲刺一次</li>
+<li><strong>多方向冲刺</strong>：同时检测上下左右，支持 8 方向冲刺</li>
+<li><strong>冲刺无敌帧</strong>：冲刺期间关闭碰撞层 <code>set_collision_mask_value(layer, false)</code></li>
+<li><strong>落地震屏</strong>：在 <code>_trigger_land_dust</code> 末尾加镜头震动（<code>Camera2D.offset</code> + Tween）</li>
+<li><strong>落地音效</strong>：添加 <code>AudioStreamPlayer2D</code> 节点，落地时播放并根据 intensity 调整音调</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Godot/" rel="tag"># Godot</a>
+              <a href="/tags/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/" rel="tag"># 游戏开发</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/04/12/Godot4%E2%80%942D%E7%A2%B0%E6%92%9E%E7%88%86%E7%82%B8%E7%B2%92%E5%AD%90%E7%89%B9%E6%95%88/" rel="prev" title="Godot4—2D碰撞爆炸粒子特效">
+                  <i class="fa fa-angle-left"></i> Godot4—2D碰撞爆炸粒子特效
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">JoJoJoin</span>
+  </div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>
